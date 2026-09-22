@@ -1,0 +1,70 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+      # CI-config-only changes (Dependabot config, the auto-merge/validate
+      # workflows themselves) don't touch the image - no need for a full
+      # multi-arch build+push on every one of them. build.yml is explicitly
+      # re-included: a change to the workflow that actually builds and
+      # pushes the image should still be exercised for real, not skipped.
+      - '.github/**'
+      - '!.github/workflows/build.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write # Sigstore OIDC for build provenance
+      attestations: write # record the attestation on the repo
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: docker/setup-buildx-action@v4.4.1
+
+      - uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@v6.2.0
+        id: meta
+        with:
+          images: ghcr.io/drumandbytes/github-actions-runner-exporter
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=long
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - uses: docker/build-push-action@v7.4.0
+        id: build
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      # Signed SLSA build provenance for the pushed image, stored next to it
+      # in GHCR as an OCI referrer. Verify with:
+      #   gh attestation verify oci://ghcr.io/drumandbytes/github-actions-runner-exporter:latest --owner drumandbytes
+      - uses: actions/attest-build-provenance@v4.2.2
+        with:
+          subject-name: ghcr.io/drumandbytes/github-actions-runner-exporter
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true

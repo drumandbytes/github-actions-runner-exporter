@@ -1,0 +1,16 @@
+name: Release Please
+
+# Merging the release PR tags vX.Y.Z, which build.yml already builds and
+# pushes as a semver-tagged image. Immutable tags — no floating vN.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    uses: drumandbytes/reusable-actions/.github/workflows/release-please.yml@v1
+    secrets: inherit
