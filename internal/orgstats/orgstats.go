@@ -101,16 +101,32 @@ func Build(ctx context.Context, client *github.Client) (Summary, error) {
 	return s, nil
 }
 
+// inconclusiveConclusions are completed-run outcomes that say nothing
+// about whether the workflow's code is actually broken - cancelled
+// (e.g. superseded by a newer push under concurrency.cancel-in-progress,
+// used throughout this org's own workflows) and skipped (a conditional
+// that didn't trigger) chief among them. Treated the same as "never
+// run": no signal this cycle, rather than counted as a failure.
+var inconclusiveConclusions = map[string]bool{
+	"cancelled": true,
+	"skipped":   true,
+	"stale":     true,
+}
+
 func buildWorkflowCI(ctx context.Context, client *github.Client, repo string, wf github.Workflow) WorkflowCI {
 	ci := WorkflowCI{Name: wf.Name}
 
 	run, ok, err := client.LatestRunForWorkflow(ctx, repo, wf.ID)
-	if err != nil || !ok || run.Status != "completed" {
+	if err != nil || !ok || run.Status != "completed" || inconclusiveConclusions[run.Conclusion] {
 		return ci
 	}
 
 	ci.HasRun = true
-	ci.LastSuccess = run.Conclusion == "success"
+	// "success" and "neutral" (a passing check with no material effect,
+	// e.g. a required check that intentionally no-ops) both count as
+	// passing; anything else left (failure, timed_out, action_required)
+	// is a genuine failure.
+	ci.LastSuccess = run.Conclusion == "success" || run.Conclusion == "neutral"
 	ci.LastRunURL = run.HTMLURL
 	created, cErr := time.Parse(time.RFC3339, run.CreatedAt)
 	updated, uErr := time.Parse(time.RFC3339, run.UpdatedAt)
