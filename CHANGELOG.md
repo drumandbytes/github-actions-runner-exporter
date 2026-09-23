@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.0.0...v1.0.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* never block a Prometheus scrape on the upstream GitHub API ([dea5eca](https://github.com/drumandbytes/github-actions-runner-exporter/commit/dea5eca0feda14aec82af057245d2e75985093a2))
+
 ## [1.0.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v0.4.1...v1.0.0) (2026-09-23)
 
 
