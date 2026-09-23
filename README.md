@@ -1,5 +1,7 @@
 # github-actions-runner-exporter
 
+[More Drumandbytes projects](https://drumandbytes.com/projects/)
+
 A small Go exporter that polls the GitHub API for an organization's
 self-hosted Actions runners, plus repo/CI health, PR counts and
 Dependabot alerts, and exposes it all as Prometheus metrics.
