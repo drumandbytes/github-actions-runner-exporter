@@ -14,8 +14,16 @@ type Config struct {
 	GitHubToken    string
 	ListenAddr     string
 	RequestTimeout time.Duration
-	CacheTTL       time.Duration
-	CacheMaxStale  time.Duration
+
+	// Runner status is genuinely real-time - short TTL.
+	RunnerCacheTTL      time.Duration
+	RunnerCacheMaxStale time.Duration
+
+	// CI/PR/Dependabot/org stats are not real-time, and cost ~3 API
+	// calls per repo per refresh - long TTL to stay well inside
+	// GitHub's rate limit across a few dozen repos.
+	OrgCacheTTL      time.Duration
+	OrgCacheMaxStale time.Duration
 }
 
 func FromEnv() (Config, error) {
@@ -24,11 +32,12 @@ func FromEnv() (Config, error) {
 		GitHubToken:    os.Getenv("GITHUB_TOKEN"),
 		ListenAddr:     envString("LISTEN_ADDR", ":9222"),
 		RequestTimeout: envDuration("GITHUB_REQUEST_TIMEOUT", 10*time.Second),
-		// GitHub's REST API rate limit (5000/hr authenticated) has ample
-		// headroom at this interval even for many more runners than this
-		// org currently has - no need to tune it down further.
-		CacheTTL:      envDuration("CACHE_TTL", 30*time.Second),
-		CacheMaxStale: envDuration("CACHE_MAX_STALE", 5*time.Minute),
+
+		RunnerCacheTTL:      envDuration("RUNNER_CACHE_TTL", 30*time.Second),
+		RunnerCacheMaxStale: envDuration("RUNNER_CACHE_MAX_STALE", 5*time.Minute),
+
+		OrgCacheTTL:      envDuration("ORG_CACHE_TTL", 5*time.Minute),
+		OrgCacheMaxStale: envDuration("ORG_CACHE_MAX_STALE", 30*time.Minute),
 	}
 
 	if c.GitHubOrg == "" {

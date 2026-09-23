@@ -1,9 +1,10 @@
 // Command github-actions-runner-exporter exposes an organization's
-// self-hosted GitHub Actions runner status (online/offline, busy/idle)
-// as Prometheus metrics.
+// GitHub Actions self-hosted runner status plus repo/CI/PR/Dependabot
+// health as Prometheus metrics.
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,8 +14,10 @@ import (
 
 	"github.com/drumandbytes/github-actions-runner-exporter/internal/collector"
 	"github.com/drumandbytes/github-actions-runner-exporter/internal/config"
+	"github.com/drumandbytes/github-actions-runner-exporter/internal/fetch"
 	"github.com/drumandbytes/github-actions-runner-exporter/internal/github"
-	"github.com/drumandbytes/github-actions-runner-exporter/internal/summary"
+	"github.com/drumandbytes/github-actions-runner-exporter/internal/orgstats"
+	"github.com/drumandbytes/github-actions-runner-exporter/internal/runners"
 )
 
 func main() {
@@ -27,10 +30,17 @@ func main() {
 	}
 
 	client := github.NewClient(cfg.GitHubOrg, cfg.GitHubToken, cfg.RequestTimeout)
-	fetcher := summary.NewFetcher(client, cfg.CacheTTL, cfg.CacheMaxStale, log)
+
+	runnerFetcher := fetch.New(func(ctx context.Context) (runners.Summary, error) {
+		return runners.Build(ctx, client)
+	}, cfg.RunnerCacheTTL, cfg.RunnerCacheMaxStale, log)
+
+	orgFetcher := fetch.New(func(ctx context.Context) (orgstats.Summary, error) {
+		return orgstats.Build(ctx, client)
+	}, cfg.OrgCacheTTL, cfg.OrgCacheMaxStale, log)
 
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(collector.New(fetcher, cfg.CacheTTL))
+	registry.MustRegister(collector.New(runnerFetcher, orgFetcher, cfg.RunnerCacheTTL, cfg.OrgCacheTTL))
 
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
