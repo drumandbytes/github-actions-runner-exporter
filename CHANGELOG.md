@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v0.4.1...v1.0.0) (2026-09-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* github_repo_ci_success is gone; consumers need github_repo_ci_last_run_conclusion and their own conclusion mapping.
+
+### Features
+
+* expose the raw GitHub conclusion instead of a collapsed pass/fail bool ([9531198](https://github.com/drumandbytes/github-actions-runner-exporter/commit/953119862f93dcb936b746d1c75d16b802f01e26))
+
 ## [0.4.1](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v0.4.0...v0.4.1) (2026-09-23)
 
 
