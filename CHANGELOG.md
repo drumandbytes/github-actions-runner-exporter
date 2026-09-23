@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v0.3.0...v0.4.0) (2026-09-23)
+
+
+### Features
+
+* add run URL to github_repo_ci_success ([9b9f0f4](https://github.com/drumandbytes/github-actions-runner-exporter/commit/9b9f0f453a4078e03f2675ee0514bf80564c715c))
+
 ## [0.3.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v0.2.0...v0.3.0) (2026-09-23)
 
 
