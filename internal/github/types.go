@@ -48,6 +48,7 @@ type WorkflowRun struct {
 	Conclusion string `json:"conclusion"` // "success" | "failure" | ... (empty until completed)
 	CreatedAt  string `json:"created_at"`
 	UpdatedAt  string `json:"updated_at"`
+	HTMLURL    string `json:"html_url"`
 }
 
 type listWorkflowRunsResponse struct {

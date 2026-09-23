@@ -70,7 +70,7 @@ func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetche
 		repoOpenPRs: desc("repo", "open_prs",
 			"Number of open pull requests."+orgNote, []string{"repo"}),
 		repoCISuccess: desc("repo", "ci_success",
-			"Whether this workflow's latest completed run succeeded (1) or not (0). Absent if the workflow has never run."+orgNote, []string{"repo", "workflow"}),
+			"Whether this workflow's latest completed run succeeded (1) or not (0). Absent if the workflow has never run."+orgNote, []string{"repo", "workflow", "url"}),
 		repoCILastRunAt: desc("repo", "ci_last_run_timestamp_seconds",
 			"Unix timestamp of this workflow's latest completed run."+orgNote, []string{"repo", "workflow"}),
 		repoCIDuration: desc("repo", "ci_last_run_duration_seconds",
@@ -134,7 +134,7 @@ func (c *Collector) collectOrgStats(ch chan<- prometheus.Metric) {
 			if wf.LastSuccess {
 				success = 1
 			}
-			ch <- prometheus.MustNewConstMetric(c.repoCISuccess, prometheus.GaugeValue, success, r.Name, wf.Name)
+			ch <- prometheus.MustNewConstMetric(c.repoCISuccess, prometheus.GaugeValue, success, r.Name, wf.Name, wf.LastRunURL)
 			ch <- prometheus.MustNewConstMetric(c.repoCILastRunAt, prometheus.GaugeValue, float64(wf.LastRunAt.Unix()), r.Name, wf.Name)
 			ch <- prometheus.MustNewConstMetric(c.repoCIDuration, prometheus.GaugeValue, wf.LastRunDurationSec, r.Name, wf.Name)
 		}

@@ -22,6 +22,7 @@ type WorkflowCI struct {
 	LastSuccess        bool
 	LastRunAt          time.Time
 	LastRunDurationSec float64
+	LastRunURL         string
 }
 
 type RepoStats struct {
@@ -110,6 +111,7 @@ func buildWorkflowCI(ctx context.Context, client *github.Client, repo string, wf
 
 	ci.HasRun = true
 	ci.LastSuccess = run.Conclusion == "success"
+	ci.LastRunURL = run.HTMLURL
 	created, cErr := time.Parse(time.RFC3339, run.CreatedAt)
 	updated, uErr := time.Parse(time.RFC3339, run.UpdatedAt)
 	if uErr == nil {
