@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v0.4.0...v0.4.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* don't count cancelled/skipped runs as CI failures ([09be5ab](https://github.com/drumandbytes/github-actions-runner-exporter/commit/09be5ab894ffce7b54f6415028504e1a5eb35404))
+
 ## [0.4.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v0.3.0...v0.4.0) (2026-09-23)
 
 
