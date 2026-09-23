@@ -42,7 +42,7 @@ workflow in every repo).
 | `github_rate_limit_remaining` | | Remaining core API rate-limit budget |
 | `github_rate_limit_limit` | | Total core API rate-limit budget |
 | `github_repo_open_prs` | `repo` | Number of open pull requests |
-| `github_repo_ci_success` | `repo`, `workflow`, `url` | 1/0, that workflow's latest completed run conclusion (`success`/`neutral` = 1, `failure`/`timed_out`/`action_required` = 0). `url` links to the run on github.com. Absent if the workflow has never run, or its latest run was `cancelled`/`skipped`/`stale` - those say nothing about whether the code is broken, so they're treated the same as no run at all rather than counted as failing |
+| `github_repo_ci_last_run_conclusion` | `repo`, `workflow`, `url`, `conclusion` | Always 1 - an "info" metric. `conclusion` is GitHub's own string verbatim (`success`, `failure`, `cancelled`, `skipped`, `neutral`, `timed_out`, `action_required`, `stale`), not collapsed to pass/fail here - what counts as "actually broken" is a dashboard-level call. `url` links to the run on github.com. Absent if the workflow has never run |
 | `github_repo_ci_last_run_timestamp_seconds` | `repo`, `workflow` | Unix timestamp of that workflow's latest completed run |
 | `github_repo_ci_last_run_duration_seconds` | `repo`, `workflow` | Duration of that workflow's latest completed run |
 | `github_repo_dependabot_alerts_open` | `repo`, `severity` | Open Dependabot alerts by severity. Absent for a severity with zero open alerts |

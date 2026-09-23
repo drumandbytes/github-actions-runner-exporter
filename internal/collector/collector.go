@@ -29,11 +29,11 @@ type Collector struct {
 	rateLimit    *prometheus.Desc
 	rateLimitCap *prometheus.Desc
 
-	repoOpenPRs     *prometheus.Desc
-	repoCISuccess   *prometheus.Desc
-	repoCILastRunAt *prometheus.Desc
-	repoCIDuration  *prometheus.Desc
-	repoDependabot  *prometheus.Desc
+	repoOpenPRs             *prometheus.Desc
+	repoCILastRunConclusion *prometheus.Desc
+	repoCILastRunAt         *prometheus.Desc
+	repoCIDuration          *prometheus.Desc
+	repoDependabot          *prometheus.Desc
 }
 
 // New builds the collector. runnerCacheTTL/orgCacheTTL are only used to
@@ -69,8 +69,15 @@ func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetche
 
 		repoOpenPRs: desc("repo", "open_prs",
 			"Number of open pull requests."+orgNote, []string{"repo"}),
-		repoCISuccess: desc("repo", "ci_success",
-			"Whether this workflow's latest completed run succeeded (1) or not (0). Absent if the workflow has never run."+orgNote, []string{"repo", "workflow", "url"}),
+		// Always 1 - an "info" style metric. The conclusion label
+		// carries GitHub's own conclusion string verbatim (success,
+		// failure, cancelled, skipped, neutral, timed_out,
+		// action_required, stale) rather than this exporter collapsing
+		// it to pass/fail - what counts as "actually broken" is a
+		// dashboard-level judgment call, not this exporter's to make.
+		// Absent if the workflow has never run.
+		repoCILastRunConclusion: desc("repo", "ci_last_run_conclusion",
+			"Always 1; the workflow's latest completed run outcome is in the conclusion label."+orgNote, []string{"repo", "workflow", "url", "conclusion"}),
 		repoCILastRunAt: desc("repo", "ci_last_run_timestamp_seconds",
 			"Unix timestamp of this workflow's latest completed run."+orgNote, []string{"repo", "workflow"}),
 		repoCIDuration: desc("repo", "ci_last_run_duration_seconds",
@@ -130,11 +137,7 @@ func (c *Collector) collectOrgStats(ch chan<- prometheus.Metric) {
 			if !wf.HasRun {
 				continue
 			}
-			success := 0.0
-			if wf.LastSuccess {
-				success = 1
-			}
-			ch <- prometheus.MustNewConstMetric(c.repoCISuccess, prometheus.GaugeValue, success, r.Name, wf.Name, wf.LastRunURL)
+			ch <- prometheus.MustNewConstMetric(c.repoCILastRunConclusion, prometheus.GaugeValue, 1, r.Name, wf.Name, wf.LastRunURL, wf.LastConclusion)
 			ch <- prometheus.MustNewConstMetric(c.repoCILastRunAt, prometheus.GaugeValue, float64(wf.LastRunAt.Unix()), r.Name, wf.Name)
 			ch <- prometheus.MustNewConstMetric(c.repoCIDuration, prometheus.GaugeValue, wf.LastRunDurationSec, r.Name, wf.Name)
 		}

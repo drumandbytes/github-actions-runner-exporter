@@ -17,9 +17,19 @@ import (
 // workflow, not per repo, so a failing workflow can't hide behind a
 // later, unrelated, successful one in the same repo.
 type WorkflowCI struct {
-	Name               string
-	HasRun             bool // false if this workflow has never run
-	LastSuccess        bool
+	Name string
+
+	HasRun bool // false if this workflow has never run
+
+	// The raw GitHub conclusion string: "success", "failure",
+	// "cancelled", "skipped", "neutral", "timed_out",
+	// "action_required" or "stale". Exposed as-is rather than
+	// collapsed to a pass/fail bool here - what counts as "actually
+	// broken" (e.g. whether "neutral" or "cancelled" should read as a
+	// problem) is a dashboard-level judgment call, not this exporter's
+	// to make.
+	LastConclusion string
+
 	LastRunAt          time.Time
 	LastRunDurationSec float64
 	LastRunURL         string
@@ -101,32 +111,16 @@ func Build(ctx context.Context, client *github.Client) (Summary, error) {
 	return s, nil
 }
 
-// inconclusiveConclusions are completed-run outcomes that say nothing
-// about whether the workflow's code is actually broken - cancelled
-// (e.g. superseded by a newer push under concurrency.cancel-in-progress,
-// used throughout this org's own workflows) and skipped (a conditional
-// that didn't trigger) chief among them. Treated the same as "never
-// run": no signal this cycle, rather than counted as a failure.
-var inconclusiveConclusions = map[string]bool{
-	"cancelled": true,
-	"skipped":   true,
-	"stale":     true,
-}
-
 func buildWorkflowCI(ctx context.Context, client *github.Client, repo string, wf github.Workflow) WorkflowCI {
 	ci := WorkflowCI{Name: wf.Name}
 
 	run, ok, err := client.LatestRunForWorkflow(ctx, repo, wf.ID)
-	if err != nil || !ok || run.Status != "completed" || inconclusiveConclusions[run.Conclusion] {
+	if err != nil || !ok || run.Status != "completed" {
 		return ci
 	}
 
 	ci.HasRun = true
-	// "success" and "neutral" (a passing check with no material effect,
-	// e.g. a required check that intentionally no-ops) both count as
-	// passing; anything else left (failure, timed_out, action_required)
-	// is a genuine failure.
-	ci.LastSuccess = run.Conclusion == "success" || run.Conclusion == "neutral"
+	ci.LastConclusion = run.Conclusion
 	ci.LastRunURL = run.HTMLURL
 	created, cErr := time.Parse(time.RFC3339, run.CreatedAt)
 	updated, uErr := time.Parse(time.RFC3339, run.UpdatedAt)
