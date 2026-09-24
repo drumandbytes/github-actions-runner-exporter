@@ -8,11 +8,8 @@ on:
       - '**.md'
       - 'LICENSE'
       - '.gitignore'
-      # CI-config-only changes (Dependabot config, the auto-merge/validate
-      # workflows themselves) don't touch the image - no need for a full
-      # multi-arch build+push on every one of them. build.yml is explicitly
-      # re-included: a change to the workflow that actually builds and
-      # pushes the image should still be exercised for real, not skipped.
+      # CI-config-only changes skip the build; this file is re-included so edits
+      # to it still run.
       - '.github/**'
       - '!.github/workflows/build.yml'
   workflow_dispatch:
@@ -61,8 +58,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-      # Signed SLSA build provenance for the pushed image, stored next to it
-      # in GHCR as an OCI referrer. Verify with:
+      # SLSA provenance, stored next to the image in GHCR. Verify with:
       #   gh attestation verify oci://ghcr.io/drumandbytes/github-actions-runner-exporter:latest --owner drumandbytes
       - uses: actions/attest-build-provenance@v4.2.2
         with:
