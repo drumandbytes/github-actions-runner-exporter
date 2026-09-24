@@ -79,6 +79,7 @@ docker build -t github-actions-runner-exporter .
 ```
 
 CI (`.github/workflows/validate.yml`) gates on the `drumandbytes/reusable-actions`
-`go-ci.yml` lint job, a Docker smoke test (`/healthz` against fake credentials —
-never a real GitHub org), and Trivy image scan. `build.yml` pushes multi-arch
+`go-ci.yml` lint job and a Docker smoke test (`/healthz` against fake credentials —
+never a real GitHub org). The Trivy image scan runs separately (`security.yml`,
+on PRs and weekly on main). `build.yml` pushes multi-arch
 images to GHCR with SLSA provenance attestation on push to `main`/tags.
