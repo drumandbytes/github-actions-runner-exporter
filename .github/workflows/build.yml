@@ -26,6 +26,7 @@ jobs:
       packages: write
       id-token: write # Sigstore OIDC for build provenance
       attestations: write # record the attestation on the repo
+      artifact-metadata: write # storage record for the pushed image
 
     steps:
       - uses: actions/checkout@v7.0.1
