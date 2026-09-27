@@ -84,6 +84,15 @@ never a real GitHub org). The Trivy image scan runs separately (`security.yml`,
 on PRs and weekly on main). `build.yml` pushes multi-arch
 images to GHCR with SLSA provenance attestation on push to `main`/tags.
 
+## Grafana dashboard
+
+[`dashboards/github-actions-runner-exporter.json`](dashboards/github-actions-runner-exporter.json) covers every metric above:
+- runners online, offline and busy, with per-runner state timelines;
+- both exporter polls' health, so a stale cache is visible;
+- CI health per repo and workflow, open PRs, Dependabot alerts by severity, and the API rate limit.
+
+Import it in Grafana (Dashboards → New → Import) and pick your Prometheus data source.
+
 ## How it was made
 
 Built with the help of an AI coding assistant (Claude). I review and test what gets published.
