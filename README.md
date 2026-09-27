@@ -83,3 +83,7 @@ CI (`.github/workflows/validate.yml`) gates on the `drumandbytes/reusable-action
 never a real GitHub org). The Trivy image scan runs separately (`security.yml`,
 on PRs and weekly on main). `build.yml` pushes multi-arch
 images to GHCR with SLSA provenance attestation on push to `main`/tags.
+
+## How it was made
+
+Built with the help of an AI coding assistant (Claude). I review and test what gets published.
