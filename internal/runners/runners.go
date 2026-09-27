@@ -1,8 +1,4 @@
-// Package runners builds the self-hosted-runner status summary - kept
-// separate from orgstats because it's fetched on a much shorter cache
-// TTL (runner up/busy is genuinely real-time; CI/PR/Dependabot signals
-// are not, and polling them that often would blow through GitHub's
-// rate limit across two dozen repos).
+// Package runners builds the runner status summary, on a much shorter TTL than orgstats.
 package runners
 
 import (

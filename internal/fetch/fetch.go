@@ -1,7 +1,5 @@
-// Package fetch caches the result of a build function so bursts of
-// concurrent Prometheus scrapes don't each trigger their own round trip,
-// and - more importantly for this exporter - so a scrape cadence tighter
-// than GitHub's rate-limit budget doesn't burn through it.
+// Package fetch caches build results so scrape bursts and a tight scrape
+// interval don't burn GitHub's rate limit.
 package fetch
 
 import (
@@ -12,20 +10,10 @@ import (
 	"time"
 )
 
-// Fetcher caches whatever T a build function produces. Get never blocks
-// a caller on an upstream round trip once it has anything cached at
-// all - a stale cache triggers a refresh in the background and the
-// stale value is returned immediately instead. This matters
-// specifically because Get is called from a Prometheus scrape handler:
-// blocking on the upstream API (as an earlier version of this did)
-// coupled scrape response time to that API's latency, and once the TTL
-// was close to the scrape interval, most scrapes ended up doing a live
-// fetch inline - slow enough, often enough, to blow past Prometheus's
-// own scrape timeout and show up as real gaps in the data.
-//
-// The one exception is the very first call ever, before anything has
-// been fetched at all - there's nothing to serve yet, so that one has
-// to block.
+// Fetcher caches a build function's T. Once anything is cached, Get never
+// blocks: a stale value is returned and refreshed in the background. Blocking
+// in the scrape handler used to blow Prometheus's scrape timeout. Only the very
+// first call blocks.
 type Fetcher[T any] struct {
 	build    func(context.Context) (T, error)
 	ttl      time.Duration

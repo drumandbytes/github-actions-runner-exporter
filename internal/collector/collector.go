@@ -1,6 +1,4 @@
-// Package collector adapts runners.Summary and orgstats.Summary into a
-// prometheus.Collector, so metrics are computed fresh from the shared
-// caches on every scrape rather than accumulated/pushed.
+// Package collector computes metrics from the shared caches on every scrape.
 package collector
 
 import (
@@ -36,10 +34,7 @@ type Collector struct {
 	repoDependabot          *prometheus.Desc
 }
 
-// New builds the collector. runnerCacheTTL/orgCacheTTL are only used to
-// document each metric's caching behavior in its HELP text, per
-// Prometheus's own guidance - they don't change the actual caching
-// (that's each Fetcher's job).
+// New builds the collector. The TTLs only feed HELP text; caching is the Fetchers' job.
 func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetcher[orgstats.Summary], runnerCacheTTL, orgCacheTTL time.Duration) *Collector {
 	runnerNote := fmt.Sprintf(" Cached for up to %s.", runnerCacheTTL)
 	orgNote := fmt.Sprintf(" Cached for up to %s - not real-time by design, see internal/orgstats.", orgCacheTTL)
@@ -69,13 +64,8 @@ func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetche
 
 		repoOpenPRs: desc("repo", "open_prs",
 			"Number of open pull requests."+orgNote, []string{"repo"}),
-		// Always 1 - an "info" style metric. The conclusion label
-		// carries GitHub's own conclusion string verbatim (success,
-		// failure, cancelled, skipped, neutral, timed_out,
-		// action_required, stale) rather than this exporter collapsing
-		// it to pass/fail - what counts as "actually broken" is a
-		// dashboard-level judgment call, not this exporter's to make.
-		// Absent if the workflow has never run.
+		// info metric, always 1. conclusion is GitHub's raw string: what counts as
+		// broken is the dashboard's call. Absent if the workflow never ran.
 		repoCILastRunConclusion: desc("repo", "ci_last_run_conclusion",
 			"Always 1; the workflow's latest completed run outcome is in the conclusion label."+orgNote, []string{"repo", "workflow", "url", "conclusion"}),
 		repoCILastRunAt: desc("repo", "ci_last_run_timestamp_seconds",

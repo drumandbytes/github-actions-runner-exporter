@@ -1,9 +1,5 @@
-// Package orgstats builds repo/CI health, PR counts, Dependabot alert
-// counts and rate-limit status for the org. Fetched on a slow cache TTL
-// (see internal/fetch and main.go) - unlike runner status, none of this
-// needs to be near-real-time, and polling ~3 endpoints per repo across
-// a few dozen repos on a short TTL would burn through GitHub's rate
-// limit for no benefit.
+// Package orgstats builds repo/CI, PR, Dependabot and rate-limit stats on a
+// slow TTL; none of it needs to be real-time.
 package orgstats
 
 import (
@@ -13,21 +9,13 @@ import (
 	"github.com/drumandbytes/github-actions-runner-exporter/internal/github"
 )
 
-// WorkflowCI is one active workflow's latest-run status - tracked per
-// workflow, not per repo, so a failing workflow can't hide behind a
-// later, unrelated, successful one in the same repo.
+// WorkflowCI is one active workflow's latest-run status.
 type WorkflowCI struct {
 	Name string
 
 	HasRun bool // false if this workflow has never run
 
-	// The raw GitHub conclusion string: "success", "failure",
-	// "cancelled", "skipped", "neutral", "timed_out",
-	// "action_required" or "stale". Exposed as-is rather than
-	// collapsed to a pass/fail bool here - what counts as "actually
-	// broken" (e.g. whether "neutral" or "cancelled" should read as a
-	// problem) is a dashboard-level judgment call, not this exporter's
-	// to make.
+	// raw GitHub conclusion; pass/fail is the dashboard's call
 	LastConclusion string
 
 	LastRunAt          time.Time
@@ -41,14 +29,10 @@ type RepoStats struct {
 
 	OpenPRs int
 
-	// Only active workflows (state == "active") are included - a
-	// disabled workflow's stale last run isn't a meaningful signal.
+	// active workflows only: a disabled one's last run means nothing
 	Workflows []WorkflowCI
 
-	// severity -> open alert count. Only severities that actually occur
-	// are present - a repo with zero open "critical" alerts simply has
-	// no "critical" key, same convention as pve-metrics-exporter's
-	// optional per-sensor critical-threshold series.
+	// severity -> open count; absent severities have no key
 	DependabotAlertsBySeverity map[string]int
 }
 
@@ -82,10 +66,8 @@ func Build(ctx context.Context, client *github.Client) (Summary, error) {
 			stats.Visibility = "public"
 		}
 
-		// Per-repo call failures below are swallowed deliberately (not
-		// propagated as a Build error): a repo the token can't see, or
-		// one with Dependabot disabled (404), shouldn't blank out every
-		// other repo's data for this scrape.
+		// per-repo errors are swallowed: one repo the token can't see (or with
+		// Dependabot off, 404) mustn't blank the rest of the scrape
 		if n, err := client.OpenPRCount(ctx, r.Name); err == nil {
 			stats.OpenPRs = n
 		}

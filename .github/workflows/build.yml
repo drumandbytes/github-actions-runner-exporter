@@ -8,8 +8,7 @@ on:
       - '**.md'
       - 'LICENSE'
       - '.gitignore'
-      # CI-config-only changes skip the build; this file is re-included so edits
-      # to it still run.
+      # CI-config-only changes skip the build; this file re-included so its own edits run.
       - '.github/**'
       - '!.github/workflows/build.yml'
   workflow_dispatch:

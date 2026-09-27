@@ -1,6 +1,4 @@
-// Package config loads settings from environment variables. Env vars
-// only (no flags/files) - this is meant to run as a container, where
-// env vars are the natural configuration surface.
+// Package config reads env vars only; it runs as a container.
 package config
 
 import (
@@ -15,13 +13,11 @@ type Config struct {
 	ListenAddr     string
 	RequestTimeout time.Duration
 
-	// Runner status is genuinely real-time - short TTL.
+	// runner status is real-time: short TTL
 	RunnerCacheTTL      time.Duration
 	RunnerCacheMaxStale time.Duration
 
-	// CI/PR/Dependabot/org stats are not real-time, and cost ~3 API
-	// calls per repo per refresh - long TTL to stay well inside
-	// GitHub's rate limit across a few dozen repos.
+	// ~3 API calls per repo per refresh: long TTL to stay inside the rate limit
 	OrgCacheTTL      time.Duration
 	OrgCacheMaxStale time.Duration
 }

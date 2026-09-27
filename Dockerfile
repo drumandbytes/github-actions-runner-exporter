@@ -1,6 +1,4 @@
-# Two-stage build. Pure Go, CGO disabled - a single static binary, no
-# libc needed. distroless/static bundles CA certificates (HTTPS to the
-# GitHub API) and nothing else.
+# Static CGO-free binary; distroless/static brings CA certs and nothing else.
 FROM golang:1.27-trixie AS builder
 WORKDIR /src
 COPY go.mod go.sum ./

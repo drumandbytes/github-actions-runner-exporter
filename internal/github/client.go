@@ -1,6 +1,4 @@
-// Package github is a minimal client for the GitHub REST endpoints this
-// exporter needs. It deliberately does not try to be a general-purpose
-// GitHub API client.
+// Package github is a minimal client for the GitHub endpoints this exporter uses.
 package github
 
 import (
@@ -61,11 +59,7 @@ func (c *Client) get(ctx context.Context, url string, out interface{}) error {
 	return nil
 }
 
-// Runners returns every self-hosted runner registered at the
-// organization level. GitHub paginates this endpoint at 30 per page by
-// default; a homelab-sized org with a handful of runners never needs a
-// second page, so pagination is deliberately not implemented here -
-// add it if this ever needs to scale past 100 runners.
+// Runners returns the org's self-hosted runners. No pagination; add it past 100.
 func (c *Client) Runners(ctx context.Context) ([]Runner, error) {
 	var out listRunnersResponse
 	url := fmt.Sprintf("%s/orgs/%s/actions/runners?per_page=100", apiBase, c.org)
@@ -75,10 +69,7 @@ func (c *Client) Runners(ctx context.Context) ([]Runner, error) {
 	return out.Runners, nil
 }
 
-// Repos returns every non-forked repo in the org. Capped at 100 - this
-// org has a few dozen, well under GitHub's page size, so pagination is
-// deliberately not implemented; add it if the org ever grows past 100
-// repos.
+// Repos returns the org's non-fork repos. No pagination; add it past 100.
 func (c *Client) Repos(ctx context.Context) ([]Repo, error) {
 	var out []Repo
 	url := fmt.Sprintf("%s/orgs/%s/repos?per_page=100&type=all", apiBase, c.org)
@@ -88,9 +79,7 @@ func (c *Client) Repos(ctx context.Context) ([]Repo, error) {
 	return out, nil
 }
 
-// Workflows returns a repo's workflow definitions. Capped at 100 - no
-// repo here plausibly has more than that many workflow files; add
-// pagination if that ever changes.
+// Workflows returns a repo's workflow definitions. No pagination; add it past 100.
 func (c *Client) Workflows(ctx context.Context, repo string) ([]Workflow, error) {
 	var out listWorkflowsResponse
 	url := fmt.Sprintf("%s/repos/%s/%s/actions/workflows?per_page=100", apiBase, c.org, repo)
@@ -100,14 +89,9 @@ func (c *Client) Workflows(ctx context.Context, repo string) ([]Workflow, error)
 	return out.Workflows, nil
 }
 
-// LatestRunForWorkflow returns the most recently created run of one
-// specific workflow. Checking per-workflow, rather than the single
-// most recent run across a repo's whole Actions history, matters: a
-// repo with several workflows (e.g. a Validate that runs on PRs and a
-// Build that runs on push) would otherwise report whichever one
-// happened to run last as if it spoke for all of them - a failing
-// Validate can sit hidden behind a later, unrelated, successful Build.
-// Returns ok=false if this workflow has never run.
+// LatestRunForWorkflow returns one workflow's most recent run, ok=false if it
+// never ran. Per workflow, so a failing Validate can't hide behind a later
+// green Build in the same repo.
 func (c *Client) LatestRunForWorkflow(ctx context.Context, repo string, workflowID int64) (run WorkflowRun, ok bool, err error) {
 	var out listWorkflowRunsResponse
 	url := fmt.Sprintf("%s/repos/%s/%s/actions/workflows/%d/runs?per_page=1", apiBase, c.org, repo, workflowID)
@@ -122,11 +106,8 @@ func (c *Client) LatestRunForWorkflow(ctx context.Context, repo string, workflow
 
 var lastPageRegexp = regexp.MustCompile(`[?&]page=(\d+)>;\s*rel="last"`)
 
-// OpenPRCount returns the number of open pull requests in a repo,
-// without paginating through them: it reads the page count off the
-// Link response header of a per_page=1 request instead. If there's no
-// "last" rel (0 or 1 open PRs), the length of the single returned page
-// is the count.
+// OpenPRCount reads the count off the Link header's "last" page of a
+// per_page=1 request; with no "last" rel it's the page length.
 func (c *Client) OpenPRCount(ctx context.Context, repo string) (int, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls?state=open&per_page=1", apiBase, c.org, repo)
 	resp, err := c.request(ctx, url)
@@ -154,10 +135,7 @@ func (c *Client) OpenPRCount(ctx context.Context, repo string) (int, error) {
 	return len(page), nil
 }
 
-// DependabotAlerts returns every open Dependabot alert for a repo.
-// Capped at 100 - a homelab-scale repo realistically never has more
-// open alerts than that; a repo that somehow did would just undercount
-// here rather than error.
+// DependabotAlerts returns a repo's open alerts. Capped at 100; undercounts past that.
 func (c *Client) DependabotAlerts(ctx context.Context, repo string) ([]DependabotAlert, error) {
 	var out []DependabotAlert
 	url := fmt.Sprintf("%s/repos/%s/%s/dependabot/alerts?state=open&per_page=100", apiBase, c.org, repo)
@@ -167,8 +145,7 @@ func (c *Client) DependabotAlerts(ctx context.Context, repo string) ([]Dependabo
 	return out, nil
 }
 
-// RateLimit returns the core API rate limit budget this client itself
-// draws from.
+// RateLimit returns the core rate-limit budget this client draws from.
 func (c *Client) RateLimit(ctx context.Context) (RateLimit, error) {
 	var out rateLimitResponse
 	if err := c.get(ctx, apiBase+"/rate_limit", &out); err != nil {
