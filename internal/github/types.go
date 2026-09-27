@@ -1,8 +1,6 @@
 package github
 
-// Runner is the subset of GitHub's self-hosted runner object this
-// exporter cares about. See:
-// https://docs.github.com/en/rest/actions/self-hosted-runners#list-self-hosted-runners-for-an-organization
+// Runner is the subset of GitHub's self-hosted runner object we use.
 type Runner struct {
 	ID     int64   `json:"id"`
 	Name   string  `json:"name"`
@@ -41,8 +39,7 @@ type listWorkflowsResponse struct {
 	Workflows  []Workflow `json:"workflows"`
 }
 
-// WorkflowRun is the subset of a workflow run this exporter needs to
-// derive "is CI currently green" for one workflow.
+// WorkflowRun is the subset of a workflow run we use.
 type WorkflowRun struct {
 	Status     string `json:"status"`     // "completed" | "in_progress" | ...
 	Conclusion string `json:"conclusion"` // "success" | "failure" | ... (empty until completed)
@@ -64,8 +61,7 @@ type DependabotAlert struct {
 	} `json:"security_advisory"`
 }
 
-// RateLimit is the "core" resource from GET /rate_limit - the budget
-// every other call in this client draws from.
+// RateLimit is the "core" resource from GET /rate_limit.
 type RateLimit struct {
 	Limit     int `json:"limit"`
 	Remaining int `json:"remaining"`
