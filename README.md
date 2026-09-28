@@ -95,6 +95,23 @@ images to GHCR with SLSA provenance attestation on push to `main`/tags.
 
 Import it in Grafana (Dashboards → New → Import) and pick your Prometheus data source.
 
+## Alerting
+
+[`alerts/github-actions-runner-exporter.rules.yml`](alerts/github-actions-runner-exporter.rules.yml) has ready-made Prometheus alerting rules. Add it under `rule_files:`, or paste its group into a `PrometheusRule`'s `spec.groups` on kube-prometheus-stack.
+
+| Alert | Fires when | Severity |
+| --- | --- | --- |
+| `GithubRunnerOffline` | a registered runner is offline for 10m | warning |
+| `GithubRunnersAllOffline` | every runner is offline for 5m | critical |
+| `GithubRunnersSaturated` | every online runner has been busy for 30m (jobs are likely queueing) | warning |
+| `GithubRunnerExporterStale` | the runner poll keeps failing (a stale cache is served) for 5m | warning |
+| `GithubOrgStatsStale` | the org stats poll keeps failing for 30m | warning |
+| `GithubApiRateLimitLow` | under 10% of the API rate limit is left for 10m | warning |
+| `GithubWorkflowFailing` | a workflow's latest run failed or timed out, for 1h | info |
+| `GithubDependabotCriticalAlerts` | a repo has open critical Dependabot alerts for 1h | warning |
+
+`GithubWorkflowFailing` looks at each workflow's latest completed run on any branch, so it's `info` rather than paging. The thresholds are starting points. Every rule has unit tests in [`alerts/github-actions-runner-exporter.test.yml`](alerts/github-actions-runner-exporter.test.yml), run in CI with `promtool test rules`.
+
 ## How it was made
 
 Built with the help of an AI coding assistant (Claude). I review and test what gets published.

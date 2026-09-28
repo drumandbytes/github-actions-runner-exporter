@@ -1,0 +1,133 @@
+# promtool test rules alerts/github-actions-runner-exporter.test.yml
+rule_files:
+  - github-actions-runner-exporter.rules.yml
+evaluation_interval: 1m
+
+tests:
+  # one of two runners offline: that runner alerts, "all offline" doesn't
+  - interval: 1m
+    input_series:
+      - series: 'github_runner_up{runner="gha-x64-1",os="Linux"}'
+        values: 0x20
+      - series: 'github_runner_up{runner="gha-x64-2",os="Linux"}'
+        values: 1x20
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: GithubRunnerOffline
+        exp_alerts:
+          - exp_labels: {severity: warning, runner: gha-x64-1, os: Linux}
+            exp_annotations:
+              summary: Self-hosted runner gha-x64-1 is offline
+              description: The runner is registered but not connected to GitHub. Jobs that need it will queue.
+      - eval_time: 11m
+        alertname: GithubRunnersAllOffline
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'github_runner_up{runner="gha-x64-1",os="Linux"}'
+        values: 0x10
+      - series: 'github_runner_up{runner="gha-x64-2",os="Linux"}'
+        values: 0x10
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: GithubRunnersAllOffline
+        exp_alerts:
+          - exp_labels: {severity: critical}
+            exp_annotations:
+              summary: All self-hosted runners are offline
+              description: No self-hosted runner can pick up jobs; every workflow that targets them is stuck.
+
+  # saturated only when every online runner is busy
+  - interval: 1m
+    input_series:
+      - series: 'github_runner_up{runner="gha-x64-1",os="Linux"}'
+        values: 1x40
+      - series: 'github_runner_up{runner="gha-x64-2",os="Linux"}'
+        values: 1x40
+      - series: 'github_runner_busy{runner="gha-x64-1",os="Linux"}'
+        values: 1x40
+      - series: 'github_runner_busy{runner="gha-x64-2",os="Linux"}'
+        values: 1x20 0x20
+    alert_rule_test:
+      - eval_time: 31m
+        alertname: GithubRunnersSaturated
+        exp_alerts: []
+      - eval_time: 19m
+        alertname: GithubRunnersSaturated
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'github_runner_up{runner="gha-x64-1",os="Linux"}'
+        values: 1x40
+      - series: 'github_runner_busy{runner="gha-x64-1",os="Linux"}'
+        values: 1x40
+    alert_rule_test:
+      - eval_time: 31m
+        alertname: GithubRunnersSaturated
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: All online self-hosted runners have been busy for 30 minutes
+              description: New jobs are likely waiting in the queue. Consider adding runners.
+
+  - interval: 1m
+    input_series:
+      - series: github_runners_up
+        values: 0x40
+      - series: github_org_up
+        values: 0x40
+      - series: github_rate_limit_remaining
+        values: 300x40
+      - series: github_rate_limit_limit
+        values: 5000x40
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: GithubRunnerExporterStale
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: Runner status is stale
+              description: The exporter's last runner poll failed and a cached result is being served. Check the token and GitHub API reachability.
+      - eval_time: 31m
+        alertname: GithubOrgStatsStale
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: Org and repo stats are stale
+              description: The org stats poll keeps failing; CI, PR and Dependabot metrics are no longer updating.
+      - eval_time: 11m
+        alertname: GithubApiRateLimitLow
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: GitHub API rate limit at 6% remaining
+              description: The exporter (or anything else sharing the token) is close to the limit, and polls will start failing. Raise the cache TTLs or use a separate token.
+
+  # only failed/timed-out runs and critical Dependabot alerts
+  - interval: 1m
+    input_series:
+      - series: 'github_repo_ci_last_run_conclusion{repo="app",workflow="Validate",url="https://github.com/org/app/actions/runs/1",conclusion="failure"}'
+        values: 1x70
+      - series: 'github_repo_ci_last_run_conclusion{repo="app",workflow="Build",url="https://github.com/org/app/actions/runs/2",conclusion="success"}'
+        values: 1x70
+      - series: 'github_repo_dependabot_alerts_open{repo="app",severity="critical"}'
+        values: 2x70
+      - series: 'github_repo_dependabot_alerts_open{repo="web",severity="high"}'
+        values: 5x70
+    alert_rule_test:
+      - eval_time: 61m
+        alertname: GithubWorkflowFailing
+        exp_alerts:
+          - exp_labels: {severity: info, repo: app, workflow: Validate, url: "https://github.com/org/app/actions/runs/1", conclusion: failure}
+            exp_annotations:
+              summary: "app: Validate last run failure"
+              description: "Latest run: https://github.com/org/app/actions/runs/1"
+      - eval_time: 61m
+        alertname: GithubDependabotCriticalAlerts
+        exp_alerts:
+          - exp_labels: {severity: warning, repo: app}
+            exp_annotations:
+              summary: app has 2 open critical Dependabot alert(s)
+              description: A dependency has a known critical vulnerability with an available advisory.
