@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.0.1...v1.1.0) (2026-09-28)
+
+
+### Features
+
+* ship Prometheus alerting rules with unit tests ([#16](https://github.com/drumandbytes/github-actions-runner-exporter/issues/16)) ([4f97fef](https://github.com/drumandbytes/github-actions-runner-exporter/commit/4f97fef0176bbaa063a73f866de076d5a7c7d749))
+
 ## [1.0.1](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.0.0...v1.0.1) (2026-09-23)
 
 
