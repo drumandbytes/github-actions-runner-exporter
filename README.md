@@ -1,6 +1,6 @@
 # github-actions-runner-exporter
 
-[More Drumandbytes projects](https://drumandbytes.com/projects/)
+[More Drumandbytes projects](https://drumandbytes.com/projects/?ref=github-actions-runner-exporter-readme)
 
 A small Go exporter that polls the GitHub API for an organization's
 self-hosted Actions runners, plus repo/CI health, PR counts and
