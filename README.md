@@ -93,7 +93,7 @@ images to GHCR with SLSA provenance attestation on push to `main`/tags.
 - both exporter polls' health, so a stale cache is visible;
 - CI health per repo and workflow, open PRs, Dependabot alerts by severity, and the API rate limit.
 
-Import it in Grafana (Dashboards → New → Import) and pick your Prometheus data source.
+Import it in Grafana (Dashboards → New → Import) by ID **[25832](https://grafana.com/grafana/dashboards/25832)**, or upload the JSON file, and pick your Prometheus data source.
 
 ## Alerting
 
