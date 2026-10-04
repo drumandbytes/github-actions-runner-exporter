@@ -1,5 +1,7 @@
 package github
 
+import "time"
+
 // Runner is the subset of GitHub's self-hosted runner object we use.
 type Runner struct {
 	ID     int64   `json:"id"`
@@ -41,16 +43,38 @@ type listWorkflowsResponse struct {
 
 // WorkflowRun is the subset of a workflow run we use.
 type WorkflowRun struct {
-	Status     string `json:"status"`     // "completed" | "in_progress" | ...
-	Conclusion string `json:"conclusion"` // "success" | "failure" | ... (empty until completed)
-	CreatedAt  string `json:"created_at"`
-	UpdatedAt  string `json:"updated_at"`
-	HTMLURL    string `json:"html_url"`
+	ID         int64     `json:"id"`
+	WorkflowID int64     `json:"workflow_id"`
+	Name       string    `json:"name"` // the workflow's name, not the run-name title
+	RunAttempt int       `json:"run_attempt"`
+	Status     string    `json:"status"`     // "completed" | "in_progress" | ...
+	Conclusion string    `json:"conclusion"` // "success" | "failure" | ... (empty until completed)
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	HTMLURL    string    `json:"html_url"`
 }
 
 type listWorkflowRunsResponse struct {
 	TotalCount   int           `json:"total_count"`
 	WorkflowRuns []WorkflowRun `json:"workflow_runs"`
+}
+
+// Job is the subset of a workflow job we use. Zero times mean GitHub sent null.
+type Job struct {
+	ID              int64     `json:"id"`
+	Name            string    `json:"name"`
+	Conclusion      string    `json:"conclusion"`
+	CreatedAt       time.Time `json:"created_at"`
+	StartedAt       time.Time `json:"started_at"`
+	CompletedAt     time.Time `json:"completed_at"`
+	RunnerName      string    `json:"runner_name"`
+	RunnerGroupName string    `json:"runner_group_name"`
+	Labels          []string  `json:"labels"` // runs-on labels
+}
+
+type listJobsResponse struct {
+	TotalCount int   `json:"total_count"`
+	Jobs       []Job `json:"jobs"`
 }
 
 // DependabotAlert is the subset of a Dependabot alert this exporter needs.

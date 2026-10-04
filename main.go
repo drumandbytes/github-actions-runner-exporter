@@ -35,12 +35,13 @@ func main() {
 		return runners.Build(ctx, client)
 	}, cfg.RunnerCacheTTL, cfg.RunnerCacheMaxStale, log)
 
+	feed := orgstats.NewFeed()
 	orgFetcher := fetch.New(func(ctx context.Context) (orgstats.Summary, error) {
-		return orgstats.Build(ctx, client)
+		return orgstats.Build(ctx, client, feed)
 	}, cfg.OrgCacheTTL, cfg.OrgCacheMaxStale, log)
 
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(collector.New(runnerFetcher, orgFetcher, cfg.RunnerCacheTTL, cfg.OrgCacheTTL))
+	registry.MustRegister(collector.New(runnerFetcher, orgFetcher, cfg.RunnerCacheTTL, cfg.OrgCacheTTL), feed)
 
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))

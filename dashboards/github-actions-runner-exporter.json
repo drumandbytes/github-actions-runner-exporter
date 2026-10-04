@@ -1,14 +1,14 @@
 {
   "title": "GitHub Actions Runners & Org Health",
   "uid": "github-actions-runner-exporter",
-  "description": "Dashboard for drumandbytes/github-actions-runner-exporter: runner online/busy state, CI health per workflow, open PRs, Dependabot alerts and API rate limit.",
+  "description": "Dashboard for drumandbytes/github-actions-runner-exporter: runner online/busy state, CI health per workflow, job run/queue time history, open PRs, Dependabot alerts and API rate limit.",
   "tags": [
     "github",
     "github-actions",
     "prometheus"
   ],
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "editable": true,
   "time": {
     "from": "now-24h",
@@ -34,6 +34,58 @@
         "current": {},
         "hide": 0,
         "refresh": 1
+      },
+      {
+        "name": "repo",
+        "label": "Repo",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "query": {
+          "query": "label_values(github_job_run_seconds_count, repo)",
+          "refId": "repo"
+        },
+        "definition": "label_values(github_job_run_seconds_count, repo)",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "hide": 0
+      },
+      {
+        "name": "window",
+        "label": "Rate window",
+        "type": "custom",
+        "query": "6h,1d,7d",
+        "current": {
+          "text": "1d",
+          "value": "1d"
+        },
+        "options": [
+          {
+            "text": "6h",
+            "value": "6h",
+            "selected": false
+          },
+          {
+            "text": "1d",
+            "value": "1d",
+            "selected": true
+          },
+          {
+            "text": "7d",
+            "value": "7d",
+            "selected": false
+          }
+        ],
+        "hide": 0
       }
     ]
   },
@@ -709,7 +761,7 @@
     {
       "id": 16,
       "title": "CI Health (per repo/workflow)",
-      "description": "One row per repo/workflow, showing the raw GitHub conclusion (green success, red failure/timed_out/action_required, blue cancelled/skipped/stale, purple neutral) rather than a collapsed pass/fail. Only the latest run per workflow is tracked (not full history).",
+      "description": "One row per repo/workflow, showing the raw GitHub conclusion (green success, red failure/timed_out/action_required, blue cancelled/skipped/stale, purple neutral) rather than a collapsed pass/fail. Latest completed run per workflow; run/queue time history is in the CI History row below.",
       "type": "table",
       "gridPos": {
         "h": 16,
@@ -904,6 +956,521 @@
           "range": true,
           "instant": false,
           "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "row",
+      "title": "CI History",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 19,
+      "title": "Job run & queue time (dashboard range)",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Per job over the selected time range. Run = started to completed on the runner; queue = created to started. Only jobs that finished while the exporter was running are counted.",
+      "gridPos": {
+        "x": 0,
+        "y": 49,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "expr": "sum by (repo, workflow, job) (increase(github_job_run_seconds_sum{repo=~\"$repo\"}[$__range])) / sum by (repo, workflow, job) (increase(github_job_run_seconds_count{repo=~\"$repo\"}[$__range]))",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, repo, workflow, job) (increase(github_job_run_seconds_bucket{repo=~\"$repo\"}[$__range])))",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "B"
+        },
+        {
+          "expr": "sum by (repo, workflow, job) (increase(github_job_queue_seconds_sum{repo=~\"$repo\"}[$__range])) / sum by (repo, workflow, job) (increase(github_job_queue_seconds_count{repo=~\"$repo\"}[$__range]))",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "C"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, repo, workflow, job) (increase(github_job_queue_seconds_bucket{repo=~\"$repo\"}[$__range])))",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "D"
+        },
+        {
+          "expr": "sum by (repo, workflow, job) (increase(github_job_run_seconds_count{repo=~\"$repo\"}[$__range]))",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "E"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "Value #A": "Avg run",
+              "Value #B": "p95 run",
+              "Value #C": "Avg queue",
+              "Value #D": "p95 queue",
+              "Value #E": "Jobs"
+            },
+            "indexByName": {
+              "repo": 0,
+              "workflow": 1,
+              "job": 2,
+              "Avg run": 3,
+              "p95 run": 4,
+              "Avg queue": 5,
+              "p95 queue": 6,
+              "Jobs": 7
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "p95 run",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Jobs"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "id": 20,
+      "title": "p95 job run time",
+      "description": "95th percentile of job run time per job, over the $window rate window.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 59,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 10,
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, repo, workflow, job) (rate(github_job_run_seconds_bucket{repo=~\"$repo\"}[$window])))",
+          "legendFormat": "{{repo}} / {{workflow}} / {{job}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "title": "Average job run time",
+      "description": "Average job run time per job (rate of _sum / rate of _count), over the $window rate window.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 59,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 10,
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (repo, workflow, job) (rate(github_job_run_seconds_sum{repo=~\"$repo\"}[$window])) / sum by (repo, workflow, job) (rate(github_job_run_seconds_count{repo=~\"$repo\"}[$window]))",
+          "legendFormat": "{{repo}} / {{workflow}} / {{job}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "title": "Queue time by runner pool",
+      "description": "Average and p95 time jobs waited for a runner, per runs-on label (e.g. oracle-x64 vs oracle-arm64).",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 68,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 10,
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, runner_label) (rate(github_job_queue_seconds_bucket{repo=~\"$repo\"}[$window])))",
+          "legendFormat": "p95 {{runner_label}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
+        },
+        {
+          "expr": "sum by (runner_label) (rate(github_job_queue_seconds_sum{repo=~\"$repo\"}[$window])) / sum by (runner_label) (rate(github_job_queue_seconds_count{repo=~\"$repo\"}[$window]))",
+          "legendFormat": "avg {{runner_label}}",
+          "refId": "B",
+          "range": true,
+          "instant": false
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "title": "Queue time by runner",
+      "description": "Average and p95 time jobs waited before this runner picked them up. GitHub-hosted runners are collapsed into github-hosted.",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 68,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 10,
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, runner) (rate(github_job_queue_seconds_bucket{repo=~\"$repo\"}[$window])))",
+          "legendFormat": "p95 {{runner}}",
+          "refId": "A",
+          "range": true,
+          "instant": false
+        },
+        {
+          "expr": "sum by (runner) (rate(github_job_queue_seconds_sum{repo=~\"$repo\"}[$window])) / sum by (runner) (rate(github_job_queue_seconds_count{repo=~\"$repo\"}[$window]))",
+          "legendFormat": "avg {{runner}}",
+          "refId": "B",
+          "range": true,
+          "instant": false
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "title": "Workflow runs per day by conclusion",
+      "description": "Completed workflow runs per day (each re-run attempt counts once).",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 77,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "failure"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "timed_out"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cancelled"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "skipped"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "light-blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "action_required"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "neutral"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "stale"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "gray"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (conclusion) (increase(github_workflow_runs_total{repo=~\"$repo\"}[1d]))",
+          "legendFormat": "{{conclusion}}",
+          "refId": "A",
+          "interval": "1d",
+          "range": true,
+          "instant": false
         }
       ]
     }
