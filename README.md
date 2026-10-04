@@ -152,7 +152,7 @@ images to GHCR with SLSA provenance attestation on push to `main`/tags.
 - runners online, offline and busy, with per-runner state timelines;
 - both exporter polls' health, so a stale cache is visible;
 - CI health per repo and workflow, open PRs, Dependabot alerts by severity, and the API rate limit;
-- CI history: average and p95 run time per job, queue time per runner pool and per runner, and runs per day by conclusion.
+- CI history: average and p95 run time per job, queue time per runner pool and per runner, and workflow runs by conclusion.
 
 Import it in Grafana (Dashboards → New → Import) and pick your Prometheus data source.
 
