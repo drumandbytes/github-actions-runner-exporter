@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.1.0...v1.2.0) (2026-10-04)
+
+
+### Features
+
+* record job queue/run time history from an incremental run feed ([#19](https://github.com/drumandbytes/github-actions-runner-exporter/issues/19)) ([2efef67](https://github.com/drumandbytes/github-actions-runner-exporter/commit/2efef672488e508ea745cdd1e36424c19f63fe30))
+
 ## [1.1.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.0.1...v1.1.0) (2026-09-28)
 
 
