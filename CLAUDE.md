@@ -26,8 +26,10 @@ depending on which TTL "wins".
   Search API. `RunsCreatedSince` and `RunJobs` follow `Link: rel="next"`
   pagination; `LatestRunForWorkflow` is only used for the startup bootstrap.
 - `internal/fetch` — generic `Fetcher[T]`, the caching layer both domains
-  share. Generic specifically because the cache/stale-fallback logic
-  would otherwise be copy-pasted per domain.
+  share. Each Fetcher polls on its own timer (the domain's TTL), not on
+  scrape, so `Get` never blocks: it serves the latest result, an error
+  until the first poll finishes, or an error past max-stale. Generic
+  specifically because this logic would otherwise be copy-pasted per domain.
 - `internal/runners`, `internal/orgstats` — `Build` functions that turn
   the client's raw responses into each domain's `Summary`. `orgstats.Build`
   swallows per-repo call failures deliberately (one repo the token can't

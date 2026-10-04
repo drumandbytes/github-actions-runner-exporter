@@ -26,17 +26,22 @@ the store - see [Run history](#run-history).
 
 | | Runner status | Org/repo stats |
 | --- | --- | --- |
-| TTL | `RUNNER_CACHE_TTL` (default 30s) | `ORG_CACHE_TTL` (default 5m) |
-| Why | Genuinely real-time - a runner picking up a job matters within seconds | CI/PR/Dependabot signals don't change that fast, and cost 4 calls per repo per refresh, plus 1 per newly finished run - polling that on a 30s TTL across a few dozen repos would burn through GitHub's 5,000/hour rate limit for no benefit |
+| Poll interval | `RUNNER_CACHE_TTL` (default 15s) | `ORG_CACHE_TTL` (default 5m) |
+| Why | Genuinely real-time - a runner picking up a job matters within seconds | CI/PR/Dependabot signals don't change that fast, and cost 4 calls per repo per refresh, plus 1 per newly finished run - polling that every 15s across a few dozen repos would burn through GitHub's 5,000/hour rate limit for no benefit |
+
+Both are polled on a timer in the background, not when Prometheus scrapes,
+so a scrape never waits on GitHub and always reads data at most one
+interval old. A runner picking up a job shows within the interval plus one
+scrape.
 
 ## Metrics
 
 | Metric | Labels | Meaning |
 | --- | --- | --- |
-| `github_runners_up` | | 1 if the last runner-status poll succeeded, 0 if a stale cache is being served |
+| `github_runners_up` | | 1 if the last runner-status poll succeeded, 0 if a stale cache is being served or the first poll is still running |
 | `github_runner_up` | `runner`, `os` | 1 if the runner is registered and online, 0 if offline |
 | `github_runner_busy` | `runner`, `os` | 1 if the runner is currently executing a job, 0 if idle |
-| `github_org_up` | | 1 if the last org/repo stats poll succeeded, 0 if a stale cache is being served |
+| `github_org_up` | | 1 if the last org/repo stats poll succeeded, 0 if a stale cache is being served or the first poll is still running (about a minute after startup at ~25 repos) |
 | `github_org_repos_total` | `visibility` | Number of non-archived repos, by `public`/`private` |
 | `github_rate_limit_remaining` | | Remaining core API rate-limit budget |
 | `github_rate_limit_limit` | | Total core API rate-limit budget |
@@ -100,7 +105,7 @@ sum by (conclusion) (increase(github_workflow_runs_total[1d]))
 | `GITHUB_TOKEN` | | yes — see [Token permissions](#token-permissions) |
 | `LISTEN_ADDR` | `:9222` | |
 | `GITHUB_REQUEST_TIMEOUT` | `10s` | |
-| `RUNNER_CACHE_TTL` | `30s` | |
+| `RUNNER_CACHE_TTL` | `15s` | |
 | `RUNNER_CACHE_MAX_STALE` | `5m` | |
 | `ORG_CACHE_TTL` | `5m` | |
 | `ORG_CACHE_MAX_STALE` | `30m` | |
