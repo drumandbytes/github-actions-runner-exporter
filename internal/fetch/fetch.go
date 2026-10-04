@@ -37,7 +37,9 @@ func (f *Fetcher[T]) Get(ctx context.Context) (T, error) {
 	cached := f.cached
 	stale := !haveData || time.Since(f.fetchedAt) >= f.ttl
 	tooStale := haveData && time.Since(f.fetchedAt) >= f.maxStale
-	if stale && !f.refreshing {
+	// without data the caller builds synchronously below; a background build
+	// on top would double every API call of the first scrape
+	if haveData && stale && !f.refreshing {
 		f.refreshing = true
 		go f.backgroundRefresh()
 	}
