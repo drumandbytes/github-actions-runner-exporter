@@ -13,11 +13,11 @@ type Config struct {
 	ListenAddr     string
 	RequestTimeout time.Duration
 
-	// runner status is real-time: short TTL
+	// runner status is real-time: short poll interval
 	RunnerCacheTTL      time.Duration
 	RunnerCacheMaxStale time.Duration
 
-	// ~3 API calls per repo per refresh: long TTL to stay inside the rate limit
+	// ~4 API calls per repo per refresh: long interval to stay inside the rate limit
 	OrgCacheTTL      time.Duration
 	OrgCacheMaxStale time.Duration
 }
@@ -29,7 +29,7 @@ func FromEnv() (Config, error) {
 		ListenAddr:     envString("LISTEN_ADDR", ":9222"),
 		RequestTimeout: envDuration("GITHUB_REQUEST_TIMEOUT", 10*time.Second),
 
-		RunnerCacheTTL:      envDuration("RUNNER_CACHE_TTL", 30*time.Second),
+		RunnerCacheTTL:      envDuration("RUNNER_CACHE_TTL", 15*time.Second),
 		RunnerCacheMaxStale: envDuration("RUNNER_CACHE_MAX_STALE", 5*time.Minute),
 
 		OrgCacheTTL:      envDuration("ORG_CACHE_TTL", 5*time.Minute),

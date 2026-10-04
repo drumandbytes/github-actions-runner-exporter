@@ -4,89 +4,69 @@ package fetch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 )
 
-// Fetcher caches a build function's T. Once anything is cached, Get never
-// blocks: a stale value is returned and refreshed in the background. Blocking
-// in the scrape handler used to blow Prometheus's scrape timeout. Only the very
-// first call blocks.
+// Fetcher rebuilds T every ttl in the background, independent of scrapes, so
+// a scrape always reads data at most one ttl old and never blocks on GitHub
+// (blocking used to blow Prometheus's scrape timeout, and the first org build
+// takes minutes). Until the first build finishes, Get returns an error.
 type Fetcher[T any] struct {
 	build    func(context.Context) (T, error)
-	ttl      time.Duration
 	maxStale time.Duration
 	log      *slog.Logger
 
-	mu         sync.Mutex
-	cached     T
-	fetchedAt  time.Time
-	haveData   bool
-	refreshing bool // a background refresh is already in flight
+	mu        sync.Mutex
+	cached    T
+	fetchedAt time.Time
+	haveData  bool
+	lastErr   error
 }
 
+// New starts the refresh loop; it runs for the life of the process.
 func New[T any](build func(context.Context) (T, error), ttl, maxStale time.Duration, log *slog.Logger) *Fetcher[T] {
-	return &Fetcher[T]{build: build, ttl: ttl, maxStale: maxStale, log: log}
+	f := &Fetcher[T]{build: build, maxStale: maxStale, log: log}
+	go f.loop(ttl)
+	return f
 }
 
-func (f *Fetcher[T]) Get(ctx context.Context) (T, error) {
-	f.mu.Lock()
-	haveData := f.haveData
-	cached := f.cached
-	stale := !haveData || time.Since(f.fetchedAt) >= f.ttl
-	tooStale := haveData && time.Since(f.fetchedAt) >= f.maxStale
-	// without data the caller builds synchronously below; a background build
-	// on top would double every API call of the first scrape
-	if haveData && stale && !f.refreshing {
-		f.refreshing = true
-		go f.backgroundRefresh()
+func (f *Fetcher[T]) loop(ttl time.Duration) {
+	f.refresh()
+	for range time.Tick(ttl) {
+		f.refresh()
 	}
-	f.mu.Unlock()
-
-	if !haveData {
-		return f.blockingRefresh(ctx)
-	}
-	if tooStale {
-		var zero T
-		return zero, fmt.Errorf("cached data is older than the %s max-stale window", f.maxStale)
-	}
-	return cached, nil
 }
 
-func (f *Fetcher[T]) backgroundRefresh() {
-	defer func() {
-		f.mu.Lock()
-		f.refreshing = false
-		f.mu.Unlock()
-	}()
-
+func (f *Fetcher[T]) refresh() {
 	fresh, err := f.build(context.Background())
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if err != nil {
-		f.log.Warn("background refresh failed, serving stale cached data", "error", err)
+		f.lastErr = err
+		if f.haveData {
+			f.log.Warn("refresh failed, serving stale cached data", "error", err)
+		}
 		return
 	}
-
-	f.mu.Lock()
-	f.cached = fresh
-	f.fetchedAt = time.Now()
-	f.haveData = true
-	f.mu.Unlock()
+	f.cached, f.fetchedAt, f.haveData, f.lastErr = fresh, time.Now(), true, nil
 }
 
-func (f *Fetcher[T]) blockingRefresh(ctx context.Context) (T, error) {
-	fresh, err := f.build(ctx)
-	if err != nil {
-		var zero T
-		return zero, err
-	}
-
+func (f *Fetcher[T]) Get() (T, error) {
+	var zero T
 	f.mu.Lock()
-	f.cached = fresh
-	f.fetchedAt = time.Now()
-	f.haveData = true
-	f.mu.Unlock()
-
-	return fresh, nil
+	defer f.mu.Unlock()
+	switch {
+	case !f.haveData && f.lastErr != nil:
+		return zero, f.lastErr
+	case !f.haveData:
+		return zero, errors.New("first poll still running")
+	case time.Since(f.fetchedAt) >= f.maxStale:
+		return zero, fmt.Errorf("cached data is older than the %s max-stale window", f.maxStale)
+	}
+	return f.cached, nil
 }

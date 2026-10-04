@@ -2,7 +2,6 @@
 package collector
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -34,10 +33,10 @@ type Collector struct {
 	repoDependabot          *prometheus.Desc
 }
 
-// New builds the collector. The TTLs only feed HELP text; caching is the Fetchers' job.
+// New builds the collector. The intervals only feed HELP text; polling is the Fetchers' job.
 func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetcher[orgstats.Summary], runnerCacheTTL, orgCacheTTL time.Duration) *Collector {
-	runnerNote := fmt.Sprintf(" Cached for up to %s.", runnerCacheTTL)
-	orgNote := fmt.Sprintf(" Cached for up to %s - not real-time by design, see internal/orgstats.", orgCacheTTL)
+	runnerNote := fmt.Sprintf(" Polled every %s.", runnerCacheTTL)
+	orgNote := fmt.Sprintf(" Polled every %s - not real-time by design, see internal/orgstats.", orgCacheTTL)
 	desc := func(subsystem, name, help string, labels []string) *prometheus.Desc {
 		return prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, name), help, labels, nil)
 	}
@@ -77,8 +76,17 @@ func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetche
 	}
 }
 
+// Describe lists every Desc rather than DescribeByCollect: collecting at
+// registration would wait for the first GitHub poll, and a failed first poll
+// would leave most metrics undescribed.
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
-	prometheus.DescribeByCollect(c, ch)
+	for _, d := range []*prometheus.Desc{
+		c.runnersUp, c.runnerUp, c.runnerBusy,
+		c.orgUp, c.reposTotal, c.rateLimit, c.rateLimitCap,
+		c.repoOpenPRs, c.repoCILastRunConclusion, c.repoCILastRunAt, c.repoCIDuration, c.repoDependabot,
+	} {
+		ch <- d
+	}
 }
 
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
@@ -87,7 +95,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (c *Collector) collectRunners(ch chan<- prometheus.Metric) {
-	s, err := c.runnerFetcher.Get(context.Background())
+	s, err := c.runnerFetcher.Get()
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(c.runnersUp, prometheus.GaugeValue, 0)
 		return
@@ -108,7 +116,7 @@ func (c *Collector) collectRunners(ch chan<- prometheus.Metric) {
 }
 
 func (c *Collector) collectOrgStats(ch chan<- prometheus.Metric) {
-	s, err := c.orgFetcher.Get(context.Background())
+	s, err := c.orgFetcher.Get()
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(c.orgUp, prometheus.GaugeValue, 0)
 		return
