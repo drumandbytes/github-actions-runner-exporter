@@ -8,7 +8,7 @@
     "prometheus"
   ],
   "schemaVersion": 39,
-  "version": 4,
+  "version": 5,
   "editable": true,
   "time": {
     "from": "now-24h",
@@ -1311,8 +1311,8 @@
     },
     {
       "id": 24,
-      "title": "Workflow runs per day by conclusion",
-      "description": "Completed workflow runs per day (each re-run attempt counts once).",
+      "title": "Workflow runs by conclusion",
+      "description": "Completed workflow runs per bar (each re-run attempt counts once). Bar width follows the time range, about 30 bars: hourly on 24h, ~6h on 7d, daily on 30d.",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -1473,14 +1473,15 @@
       },
       "targets": [
         {
-          "expr": "sum by (conclusion) (increase(github_workflow_runs_total{repo=~\"$repo\"}[1d]))",
+          "expr": "sum by (conclusion) (increase(github_workflow_runs_total{repo=~\"$repo\"}[$__interval]))",
           "legendFormat": "{{conclusion}}",
           "refId": "A",
-          "interval": "1d",
           "range": true,
           "instant": false
         }
-      ]
+      ],
+      "interval": "1h",
+      "maxDataPoints": 30
     }
   ]
 }
