@@ -23,8 +23,8 @@ depending on which TTL "wins".
   the page count off the `Link` response header instead of paginating —
   deliberate: it's one request regardless of how many open PRs a repo has,
   and stays on the *core* rate limit rather than the separately-throttled
-  Search API. `LatestRunForWorkflow` takes a workflow ID rather than
-  checking the repo's most recent run overall — see orgstats below for why.
+  Search API. `RunsCreatedSince` and `RunJobs` follow `Link: rel="next"`
+  pagination; `LatestRunForWorkflow` is only used for the startup bootstrap.
 - `internal/fetch` — generic `Fetcher[T]`, the caching layer both domains
   share. Generic specifically because the cache/stale-fallback logic
   would otherwise be copy-pasted per domain.
@@ -38,19 +38,20 @@ depending on which TTL "wins".
   metrics for `/metrics`, on one shared `prometheus.Collector`.
 - `internal/config` — env var parsing (see README's Configuration table).
 
-CI status is tracked per active workflow (`orgstats.buildWorkflowCI`),
-not per repo — checking only the single most recent run across a
-repo's whole Actions history would let a failing workflow hide behind
-a later, unrelated, successful one. Cost: one `Workflows` call plus one
-`LatestRunForWorkflow` call per active workflow, per repo, per
-`ORG_CACHE_TTL` refresh — still comfortably inside the rate limit at
-this org's scale (a few dozen repos, a handful of workflows each), but
-don't add finer granularity than that without re-checking the budget.
-
-Deliberately out of scope: per-job duration/queue-time metrics and any
-run history beyond the latest one per workflow (no org-wide "all runs"
-endpoint, only per-repo/per-workflow — pulling more would mean fetching
-full run history for every workflow in every repo).
+CI history comes from an incremental run feed (`orgstats.Feed`), not
+per-workflow polling: per repo, per `ORG_CACHE_TTL` refresh, one
+`RunsCreatedSince(watermark)` call plus one `RunJobs` call per newly
+completed run; every finished job is observed once into the
+`github_job_*` histograms, and Prometheus is the history store. The feed
+also keeps the per-active-workflow `github_repo_ci_last_run_*` snapshot
+(a failing workflow mustn't hide behind a later green one in the same
+repo), seeded at startup with one `LatestRunForWorkflow` per workflow.
+The watermark is pinned by the oldest in-progress run (capped at 24h) —
+don't add `status=completed` to the runs query, or a slow run created
+before a faster one gets skipped forever. Dedupe is by (run ID, attempt)
+and job ID, kept 48h. A restart starts from "now"; nothing is replayed.
+Measured on drumandbytes (26 repos, 156 active workflows): ~106 calls per
+refresh vs ~236 with the old per-workflow polling.
 
 ## Build / test / run
 

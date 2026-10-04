@@ -19,18 +19,15 @@ only the single most recent run across a repo's whole Actions history
 would let a failing workflow hide behind a later, unrelated, successful
 one (e.g. a broken `Validate` masked by a subsequent green `Build`).
 
-Deliberately **not** included: per-job duration/queue-time metrics or
-run history beyond the latest one (GitHub's REST API has no org-wide
-"all workflow runs" endpoint, only per-repo/per-workflow, so anything
-beyond "latest run" would mean pulling full run history for every
-workflow in every repo).
+Job queue and run times are recorded as **history**, with Prometheus as
+the store - see [Run history](#run-history).
 
 ## Two cache tiers
 
 | | Runner status | Org/repo stats |
 | --- | --- | --- |
 | TTL | `RUNNER_CACHE_TTL` (default 30s) | `ORG_CACHE_TTL` (default 5m) |
-| Why | Genuinely real-time - a runner picking up a job matters within seconds | CI/PR/Dependabot signals don't change that fast, and cost 3 + N calls per repo per refresh (N = active workflow count) - polling that on a 30s TTL across a few dozen repos would burn through GitHub's 5,000/hour rate limit for no benefit |
+| Why | Genuinely real-time - a runner picking up a job matters within seconds | CI/PR/Dependabot signals don't change that fast, and cost 4 calls per repo per refresh, plus 1 per newly finished run - polling that on a 30s TTL across a few dozen repos would burn through GitHub's 5,000/hour rate limit for no benefit |
 
 ## Metrics
 
@@ -46,8 +43,54 @@ workflow in every repo).
 | `github_repo_open_prs` | `repo` | Number of open pull requests |
 | `github_repo_ci_last_run_conclusion` | `repo`, `workflow`, `url`, `conclusion` | Always 1 - an "info" metric. `conclusion` is GitHub's own string verbatim (`success`, `failure`, `cancelled`, `skipped`, `neutral`, `timed_out`, `action_required`, `stale`), not collapsed to pass/fail here - what counts as "actually broken" is a dashboard-level call. `url` links to the run on github.com. Absent if the workflow has never run |
 | `github_repo_ci_last_run_timestamp_seconds` | `repo`, `workflow` | Unix timestamp of that workflow's latest completed run |
-| `github_repo_ci_last_run_duration_seconds` | `repo`, `workflow` | Duration of that workflow's latest completed run |
+| `github_repo_ci_last_run_duration_seconds` | `repo`, `workflow` | Duration of that workflow's latest completed run, created → last update, so it includes queue time (the `github_job_*` histograms split the two) |
+| `github_job_queue_seconds` | `repo`, `workflow`, `job`, `runner`, `runner_label`, `conclusion` | Histogram: time each finished job waited for a runner (`created_at` → `started_at`) |
+| `github_job_run_seconds` | same as above | Histogram: time each finished job ran on its runner (`started_at` → `completed_at`) |
+| `github_workflow_runs_total` | `repo`, `workflow`, `conclusion` | Counter: completed workflow runs, once per run attempt |
 | `github_repo_dependabot_alerts_open` | `repo`, `severity` | Open Dependabot alerts by severity. Absent for a severity with zero open alerts |
+
+## Run history
+
+Each org refresh lists every repo's runs created since a per-repo
+watermark (`GET /repos/{org}/{repo}/actions/runs?created=>=…`, paginated),
+then fetches `…/runs/{id}/jobs` once per newly completed run and records
+each job into the histograms above. The exporter keeps no history itself;
+Prometheus does.
+
+- **Watermark:** the oldest run still in progress, else the newest run
+  seen. An in-progress run holds the watermark back so it's counted when
+  it finishes, but at most 24h (a run stuck waiting for approval longer
+  than that is never counted).
+- **Dedupe:** finished runs (per attempt) and job IDs are remembered for
+  48h, so overlapping polls and re-runs never double-count. A re-run
+  counts as another run; jobs it carries over unchanged aren't recorded twice.
+- **Restart:** starts from "now" - nothing that finished before startup is
+  replayed. On startup one `LatestRunForWorkflow` call per active workflow
+  fills the `github_repo_ci_last_run_*` metrics.
+- Skipped jobs and jobs cancelled before a runner picked them up aren't
+  recorded. GitHub-hosted runners show as `runner="github-hosted"` (their
+  names are unique per job). `runner_label` is the job's `runs-on` labels
+  minus `self-hosted`, e.g. `oracle-x64` / `oracle-arm64`: one per pool.
+- Buckets: 5s, 10s, 30s, 1m, 2m, 3m, 5m, 10m, 15m, 20m, 30m, 60m.
+- Cardinality grows with repo × workflow × job × runner × conclusion
+  combinations that actually ran, × 14 series per histogram.
+
+Example PromQL:
+
+```promql
+# average job run time per job over the last day
+sum by (repo, workflow, job) (rate(github_job_run_seconds_sum[1d]))
+  / sum by (repo, workflow, job) (rate(github_job_run_seconds_count[1d]))
+
+# p95 job run time per job
+histogram_quantile(0.95, sum by (le, repo, workflow, job) (rate(github_job_run_seconds_bucket[1d])))
+
+# p95 queue time per runner pool
+histogram_quantile(0.95, sum by (le, runner_label) (rate(github_job_queue_seconds_bucket[1d])))
+
+# runs per day by conclusion
+sum by (conclusion) (increase(github_workflow_runs_total[1d]))
+```
 
 ## Configuration
 
@@ -91,7 +134,8 @@ images to GHCR with SLSA provenance attestation on push to `main`/tags.
 [`dashboards/github-actions-runner-exporter.json`](dashboards/github-actions-runner-exporter.json) covers every metric above:
 - runners online, offline and busy, with per-runner state timelines;
 - both exporter polls' health, so a stale cache is visible;
-- CI health per repo and workflow, open PRs, Dependabot alerts by severity, and the API rate limit.
+- CI health per repo and workflow, open PRs, Dependabot alerts by severity, and the API rate limit;
+- CI history: average and p95 run time per job, queue time per runner pool and per runner, and runs per day by conclusion.
 
 Import it in Grafana (Dashboards → New → Import) and pick your Prometheus data source.
 
