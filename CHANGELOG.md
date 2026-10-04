@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.2.0...v1.3.0) (2026-10-04)
+
+
+### Features
+
+* poll GitHub on a timer instead of on scrape ([#21](https://github.com/drumandbytes/github-actions-runner-exporter/issues/21)) ([ae644a6](https://github.com/drumandbytes/github-actions-runner-exporter/commit/ae644a670ebc72d6ad20e3b99209156036209b05))
+
 ## [1.2.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.1.0...v1.2.0) (2026-10-04)
 
 
