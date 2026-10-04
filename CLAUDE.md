@@ -19,7 +19,9 @@ depending on which TTL "wins".
 - `internal/github` — REST client for every GitHub endpoint this exporter
   calls (`orgs/{org}/actions/runners`, `orgs/{org}/repos`,
   `repos/{owner}/{repo}/actions/workflows`, `.../actions/workflows/{id}/runs`,
-  `.../pulls`, `.../dependabot/alerts`, `/rate_limit`). `OpenPRCount` reads
+  `.../pulls`, `.../dependabot/alerts`). The rate-limit budget comes from
+  the `X-RateLimit-*` headers of those responses, not `GET /rate_limit`,
+  which reports used=0 for our tokens. `OpenPRCount` reads
   the page count off the `Link` response header instead of paginating —
   deliberate: it's one request regardless of how many open PRs a repo has,
   and stays on the *core* rate limit rather than the separately-throttled
@@ -34,8 +36,8 @@ depending on which TTL "wins".
   the client's raw responses into each domain's `Summary`. `orgstats.Build`
   swallows per-repo call failures deliberately (one repo the token can't
   see, or with Dependabot disabled, shouldn't blank out every other
-  repo's data) — but propagates a failure of `Repos`/`RateLimit`
-  themselves, since nothing else can proceed without those.
+  repo's data) — but propagates a failure of `Repos` itself, since nothing else can
+  proceed without it.
 - `internal/collector` — adapts both `Summary` types into Prometheus
   metrics for `/metrics`, on one shared `prometheus.Collector`.
 - `internal/config` — env var parsing (see README's Configuration table).
@@ -52,7 +54,7 @@ The watermark is pinned by the oldest in-progress run (capped at 24h) —
 don't add `status=completed` to the runs query, or a slow run created
 before a faster one gets skipped forever. Dedupe is by (run ID, attempt)
 and job ID, kept 48h. A restart starts from "now"; nothing is replayed.
-Measured on drumandbytes (26 repos, 156 active workflows): ~106 calls per
+Measured on drumandbytes (26 repos, 156 active workflows): ~105 calls per
 refresh vs ~236 with the old per-workflow polling.
 
 ## Build / test / run

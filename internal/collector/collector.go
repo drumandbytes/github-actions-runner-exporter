@@ -8,6 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/drumandbytes/github-actions-runner-exporter/internal/fetch"
+	"github.com/drumandbytes/github-actions-runner-exporter/internal/github"
 	"github.com/drumandbytes/github-actions-runner-exporter/internal/orgstats"
 	"github.com/drumandbytes/github-actions-runner-exporter/internal/runners"
 )
@@ -17,6 +18,7 @@ const namespace = "github"
 type Collector struct {
 	runnerFetcher *fetch.Fetcher[runners.Summary]
 	orgFetcher    *fetch.Fetcher[orgstats.Summary]
+	rateLimitFn   func() map[time.Time]github.RateLimit
 
 	runnerUp     *prometheus.Desc
 	runnerBusy   *prometheus.Desc
@@ -25,6 +27,7 @@ type Collector struct {
 	reposTotal   *prometheus.Desc
 	rateLimit    *prometheus.Desc
 	rateLimitCap *prometheus.Desc
+	rateWindow   *prometheus.Desc
 
 	repoOpenPRs             *prometheus.Desc
 	repoCILastRunConclusion *prometheus.Desc
@@ -34,7 +37,7 @@ type Collector struct {
 }
 
 // New builds the collector. The intervals only feed HELP text; polling is the Fetchers' job.
-func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetcher[orgstats.Summary], runnerCacheTTL, orgCacheTTL time.Duration) *Collector {
+func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetcher[orgstats.Summary], rateLimits func() map[time.Time]github.RateLimit, runnerCacheTTL, orgCacheTTL time.Duration) *Collector {
 	runnerNote := fmt.Sprintf(" Polled every %s.", runnerCacheTTL)
 	orgNote := fmt.Sprintf(" Polled every %s - not real-time by design, see internal/orgstats.", orgCacheTTL)
 	desc := func(subsystem, name, help string, labels []string) *prometheus.Desc {
@@ -44,6 +47,7 @@ func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetche
 	return &Collector{
 		runnerFetcher: runnerFetcher,
 		orgFetcher:    orgFetcher,
+		rateLimitFn:   rateLimits,
 
 		runnersUp: desc("runners", "up",
 			"Whether the last scrape of the runners API succeeded (1) or a stale cache is being served (0)."+runnerNote, nil),
@@ -57,9 +61,11 @@ func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetche
 		reposTotal: desc("org", "repos_total",
 			"Number of non-archived repos in the org."+orgNote, []string{"visibility"}),
 		rateLimit: desc("rate_limit", "remaining",
-			"Remaining core API rate-limit budget."+orgNote, nil),
+			"Remaining core API rate-limit budget, as of the latest GitHub response.", nil),
 		rateLimitCap: desc("rate_limit", "limit",
-			"Total core API rate-limit budget."+orgNote, nil),
+			"Total core API rate-limit budget.", nil),
+		rateWindow: desc("rate_limit", "window_remaining",
+			"Remaining budget per core rate-limit window. GitHub counts per region, so a token can have several windows at once; github_rate_limit_remaining is the lowest.", []string{"reset"}),
 
 		repoOpenPRs: desc("repo", "open_prs",
 			"Number of open pull requests."+orgNote, []string{"repo"}),
@@ -82,7 +88,7 @@ func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetche
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	for _, d := range []*prometheus.Desc{
 		c.runnersUp, c.runnerUp, c.runnerBusy,
-		c.orgUp, c.reposTotal, c.rateLimit, c.rateLimitCap,
+		c.orgUp, c.reposTotal, c.rateLimit, c.rateLimitCap, c.rateWindow,
 		c.repoOpenPRs, c.repoCILastRunConclusion, c.repoCILastRunAt, c.repoCIDuration, c.repoDependabot,
 	} {
 		ch <- d
@@ -92,6 +98,23 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	c.collectRunners(ch)
 	c.collectOrgStats(ch)
+	c.collectRateLimits(ch)
+}
+
+// collectRateLimits reports every active core window plus the scarcest one,
+// which is what runs out first. Absent until the first GitHub response.
+func (c *Collector) collectRateLimits(ch chan<- prometheus.Metric) {
+	var low github.RateLimit
+	for reset, rl := range c.rateLimitFn() {
+		ch <- prometheus.MustNewConstMetric(c.rateWindow, prometheus.GaugeValue, float64(rl.Remaining), reset.Format(time.RFC3339))
+		if low.Limit == 0 || rl.Remaining < low.Remaining {
+			low = rl
+		}
+	}
+	if low.Limit > 0 {
+		ch <- prometheus.MustNewConstMetric(c.rateLimit, prometheus.GaugeValue, float64(low.Remaining))
+		ch <- prometheus.MustNewConstMetric(c.rateLimitCap, prometheus.GaugeValue, float64(low.Limit))
+	}
 }
 
 func (c *Collector) collectRunners(ch chan<- prometheus.Metric) {
@@ -122,8 +145,6 @@ func (c *Collector) collectOrgStats(ch chan<- prometheus.Metric) {
 		return
 	}
 	ch <- prometheus.MustNewConstMetric(c.orgUp, prometheus.GaugeValue, 1)
-	ch <- prometheus.MustNewConstMetric(c.rateLimit, prometheus.GaugeValue, float64(s.RateLimit.Remaining))
-	ch <- prometheus.MustNewConstMetric(c.rateLimitCap, prometheus.GaugeValue, float64(s.RateLimit.Limit))
 
 	visibilityCounts := map[string]int{}
 	for _, r := range s.Repos {

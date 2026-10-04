@@ -28,9 +28,6 @@ type fakeClient struct {
 func (c *fakeClient) Repos(context.Context) ([]github.Repo, error) {
 	return []github.Repo{{Name: "repo"}, {Name: "old", Archived: true}}, c.reposErr
 }
-func (c *fakeClient) RateLimit(context.Context) (github.RateLimit, error) {
-	return github.RateLimit{Limit: 5000, Remaining: 4000}, nil
-}
 func (c *fakeClient) OpenPRCount(context.Context, string) (int, error) {
 	return 0, errors.New("forbidden")
 }
@@ -245,7 +242,7 @@ func TestBuild(t *testing.T) {
 		t.Fatal(err)
 	}
 	// archived repo dropped, disabled workflow dropped, per-repo errors swallowed
-	if len(s.Repos) != 1 || len(s.Repos[0].Workflows) != 1 || !s.Repos[0].Workflows[0].HasRun || s.RateLimit.Remaining != 4000 {
+	if len(s.Repos) != 1 || len(s.Repos[0].Workflows) != 1 || !s.Repos[0].Workflows[0].HasRun {
 		t.Fatalf("summary = %+v", s)
 	}
 
