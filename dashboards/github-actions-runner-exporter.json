@@ -8,7 +8,7 @@
     "prometheus"
   ],
   "schemaVersion": 39,
-  "version": 3,
+  "version": 4,
   "editable": true,
   "time": {
     "from": "now-24h",
@@ -951,21 +951,21 @@
       },
       "targets": [
         {
-          "expr": "max(github_rate_limit_remaining)",
-          "legendFormat": "remaining (scarcest window)",
+          "expr": "min(github_rate_limit_window_remaining)",
+          "legendFormat": "lowest budget",
           "range": true,
           "instant": false,
           "refId": "A"
         },
         {
-          "expr": "max by (reset) (github_rate_limit_window_remaining)",
-          "legendFormat": "window resetting {{reset}}",
+          "expr": "max(github_rate_limit_window_remaining)",
+          "legendFormat": "highest budget",
           "range": true,
           "instant": false,
           "refId": "B"
         }
       ],
-      "description": "remaining: the scarcest core window, which is what runs out first. GitHub counts per region, so a token can have several windows at once; each shows as its own line until it resets."
+      "description": "GitHub counts a token per region, so it can have several API budgets (windows) at once. Lowest is the one that runs out first, the same value as github_rate_limit_remaining; highest shows how unevenly usage is split. With one budget the lines overlap. Per-budget detail: github_rate_limit_window_remaining."
     },
     {
       "id": 18,
