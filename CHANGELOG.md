@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.3.0...v1.3.1) (2026-10-04)
+
+
+### Performance Improvements
+
+* cross-compile arm64 instead of building under QEMU ([#23](https://github.com/drumandbytes/github-actions-runner-exporter/issues/23)) ([1ba2391](https://github.com/drumandbytes/github-actions-runner-exporter/commit/1ba2391931c199113802b8e204b73daea49124a1))
+
 ## [1.3.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.2.0...v1.3.0) (2026-10-04)
 
 
