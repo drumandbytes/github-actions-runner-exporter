@@ -71,7 +71,7 @@ func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetche
 		repoCILastRunAt: desc("repo", "ci_last_run_timestamp_seconds",
 			"Unix timestamp of this workflow's latest completed run."+orgNote, []string{"repo", "workflow"}),
 		repoCIDuration: desc("repo", "ci_last_run_duration_seconds",
-			"Duration of this workflow's latest completed run."+orgNote, []string{"repo", "workflow"}),
+			"Duration of this workflow's latest completed run, created to last update, so queue time included; see github_job_run_seconds for run time alone."+orgNote, []string{"repo", "workflow"}),
 		repoDependabot: desc("repo", "dependabot_alerts_open",
 			"Open Dependabot alerts by severity. Absent for a severity with zero open alerts."+orgNote, []string{"repo", "severity"}),
 	}

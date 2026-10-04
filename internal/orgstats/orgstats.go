@@ -42,7 +42,19 @@ type Summary struct {
 	RateLimit   github.RateLimit
 }
 
-func Build(ctx context.Context, client *github.Client) (Summary, error) {
+// Client is the subset of *github.Client this package calls; tests fake it.
+type Client interface {
+	Repos(ctx context.Context) ([]github.Repo, error)
+	RateLimit(ctx context.Context) (github.RateLimit, error)
+	OpenPRCount(ctx context.Context, repo string) (int, error)
+	Workflows(ctx context.Context, repo string) ([]github.Workflow, error)
+	DependabotAlerts(ctx context.Context, repo string) ([]github.DependabotAlert, error)
+	LatestRunForWorkflow(ctx context.Context, repo string, workflowID int64) (github.WorkflowRun, bool, error)
+	RunsCreatedSince(ctx context.Context, repo string, since time.Time) ([]github.WorkflowRun, error)
+	RunJobs(ctx context.Context, repo string, runID int64) ([]github.Job, error)
+}
+
+func Build(ctx context.Context, client Client, feed *Feed) (Summary, error) {
 	repos, err := client.Repos(ctx)
 	if err != nil {
 		return Summary{}, err
@@ -73,12 +85,13 @@ func Build(ctx context.Context, client *github.Client) (Summary, error) {
 		}
 
 		if workflows, err := client.Workflows(ctx, r.Name); err == nil {
+			var active []github.Workflow
 			for _, wf := range workflows {
-				if wf.State != "active" {
-					continue
+				if wf.State == "active" {
+					active = append(active, wf)
 				}
-				stats.Workflows = append(stats.Workflows, buildWorkflowCI(ctx, client, r.Name, wf))
 			}
+			stats.Workflows = feed.Poll(ctx, client, r.Name, active)
 		}
 
 		if alerts, err := client.DependabotAlerts(ctx, r.Name); err == nil && len(alerts) > 0 {
@@ -91,26 +104,4 @@ func Build(ctx context.Context, client *github.Client) (Summary, error) {
 		s.Repos = append(s.Repos, stats)
 	}
 	return s, nil
-}
-
-func buildWorkflowCI(ctx context.Context, client *github.Client, repo string, wf github.Workflow) WorkflowCI {
-	ci := WorkflowCI{Name: wf.Name}
-
-	run, ok, err := client.LatestRunForWorkflow(ctx, repo, wf.ID)
-	if err != nil || !ok || run.Status != "completed" {
-		return ci
-	}
-
-	ci.HasRun = true
-	ci.LastConclusion = run.Conclusion
-	ci.LastRunURL = run.HTMLURL
-	created, cErr := time.Parse(time.RFC3339, run.CreatedAt)
-	updated, uErr := time.Parse(time.RFC3339, run.UpdatedAt)
-	if uErr == nil {
-		ci.LastRunAt = updated
-	}
-	if cErr == nil && uErr == nil {
-		ci.LastRunDurationSec = updated.Sub(created).Seconds()
-	}
-	return ci
 }
