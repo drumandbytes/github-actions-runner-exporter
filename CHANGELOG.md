@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.3.1...v1.3.2) (2026-10-04)
+
+
+### Bug Fixes
+
+* report the real API rate-limit budget from response headers ([#26](https://github.com/drumandbytes/github-actions-runner-exporter/issues/26)) ([3ac76f2](https://github.com/drumandbytes/github-actions-runner-exporter/commit/3ac76f268e9b81890e4ff5e90d549d5b3bfb2206))
+
 ## [1.3.1](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.3.0...v1.3.1) (2026-10-04)
 
 
