@@ -39,13 +39,11 @@ type RepoStats struct {
 type Summary struct {
 	GeneratedAt time.Time
 	Repos       []RepoStats
-	RateLimit   github.RateLimit
 }
 
 // Client is the subset of *github.Client this package calls; tests fake it.
 type Client interface {
 	Repos(ctx context.Context) ([]github.Repo, error)
-	RateLimit(ctx context.Context) (github.RateLimit, error)
 	OpenPRCount(ctx context.Context, repo string) (int, error)
 	Workflows(ctx context.Context, repo string) ([]github.Workflow, error)
 	DependabotAlerts(ctx context.Context, repo string) ([]github.DependabotAlert, error)
@@ -60,12 +58,7 @@ func Build(ctx context.Context, client Client, feed *Feed) (Summary, error) {
 		return Summary{}, err
 	}
 
-	rateLimit, err := client.RateLimit(ctx)
-	if err != nil {
-		return Summary{}, err
-	}
-
-	s := Summary{GeneratedAt: time.Now(), RateLimit: rateLimit}
+	s := Summary{GeneratedAt: time.Now()}
 	for _, r := range repos {
 		if r.Archived {
 			continue

@@ -85,14 +85,8 @@ type DependabotAlert struct {
 	} `json:"security_advisory"`
 }
 
-// RateLimit is the "core" resource from GET /rate_limit.
+// RateLimit is the "core" API budget, from X-RateLimit-* response headers.
 type RateLimit struct {
-	Limit     int `json:"limit"`
-	Remaining int `json:"remaining"`
-}
-
-type rateLimitResponse struct {
-	Resources struct {
-		Core RateLimit `json:"core"`
-	} `json:"resources"`
+	Limit     int
+	Remaining int
 }

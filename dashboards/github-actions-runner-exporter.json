@@ -8,7 +8,7 @@
     "prometheus"
   ],
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "editable": true,
   "time": {
     "from": "now-24h",
@@ -952,12 +952,20 @@
       "targets": [
         {
           "expr": "max(github_rate_limit_remaining)",
-          "legendFormat": "remaining",
+          "legendFormat": "remaining (scarcest window)",
           "range": true,
           "instant": false,
           "refId": "A"
+        },
+        {
+          "expr": "max by (reset) (github_rate_limit_window_remaining)",
+          "legendFormat": "window resetting {{reset}}",
+          "range": true,
+          "instant": false,
+          "refId": "B"
         }
-      ]
+      ],
+      "description": "remaining: the scarcest core window, which is what runs out first. GitHub counts per region, so a token can have several windows at once; each shows as its own line until it resets."
     },
     {
       "id": 18,

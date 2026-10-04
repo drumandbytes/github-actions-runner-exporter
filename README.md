@@ -43,8 +43,9 @@ scrape.
 | `github_runner_busy` | `runner`, `os` | 1 if the runner is currently executing a job, 0 if idle |
 | `github_org_up` | | 1 if the last org/repo stats poll succeeded, 0 if a stale cache is being served or the first poll is still running (about a minute after startup at ~25 repos) |
 | `github_org_repos_total` | `visibility` | Number of non-archived repos, by `public`/`private` |
-| `github_rate_limit_remaining` | | Remaining core API rate-limit budget |
-| `github_rate_limit_limit` | | Total core API rate-limit budget |
+| `github_rate_limit_remaining` | | Remaining core API budget in the scarcest active window: the one that runs out first |
+| `github_rate_limit_limit` | | Total core API budget of that window |
+| `github_rate_limit_window_remaining` | `reset` | Remaining budget per active core window, labelled with its reset time. GitHub counts per region, so one token can have several windows at once, and which one a call counts against depends on the endpoint. A window's series disappears once it resets |
 | `github_repo_open_prs` | `repo` | Number of open pull requests |
 | `github_repo_ci_last_run_conclusion` | `repo`, `workflow`, `url`, `conclusion` | Always 1 - an "info" metric. `conclusion` is GitHub's own string verbatim (`success`, `failure`, `cancelled`, `skipped`, `neutral`, `timed_out`, `action_required`, `stale`), not collapsed to pass/fail here - what counts as "actually broken" is a dashboard-level call. `url` links to the run on github.com. Absent if the workflow has never run |
 | `github_repo_ci_last_run_timestamp_seconds` | `repo`, `workflow` | Unix timestamp of that workflow's latest completed run |
@@ -96,6 +97,17 @@ histogram_quantile(0.95, sum by (le, runner_label) (rate(github_job_queue_second
 # runs per day by conclusion
 sum by (conclusion) (increase(github_workflow_runs_total[1d]))
 ```
+
+## Rate limit
+
+The budget comes from the `X-RateLimit-*` headers of the exporter's own API
+responses, which GitHub documents as authoritative. `GET /rate_limit` isn't
+used: it can disagree with the headers, and for our tokens it reported
+`used: 0` throughout. Because GitHub serves requests from several regions, a
+token can be counted in two `core` windows at once, with different reset
+times and counts. On drumandbytes, runners, workflows and Dependabot alerts
+landed in one window and everything else in another. The exporter tracks every
+window it sees and alerts on the lowest.
 
 ## Configuration
 

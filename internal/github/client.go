@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -16,14 +17,21 @@ const apiBase = "https://api.github.com"
 
 type Client struct {
 	baseURL    string // apiBase; tests point it at httptest
+	now        func() time.Time
 	org        string
 	token      string
 	httpClient *http.Client
+
+	mu sync.Mutex // both pollers share the client
+	// core budgets by reset time: GitHub counts per region, so one token has
+	// more than one window at once, depending on which region serves an endpoint
+	budgets map[int64]RateLimit
 }
 
 func NewClient(org, token string, timeout time.Duration) *Client {
 	return &Client{
 		baseURL:    apiBase,
+		now:        time.Now,
 		org:        org,
 		token:      token,
 		httpClient: &http.Client{Timeout: timeout},
@@ -43,7 +51,32 @@ func (c *Client) request(ctx context.Context, url string) (*http.Response, error
 	if err != nil {
 		return nil, fmt.Errorf("requesting %s: %w", url, err)
 	}
+	c.recordRateLimit(resp.Header)
 	return resp, nil
+}
+
+// recordRateLimit keeps the core budget from a response's headers. GET
+// /rate_limit can't be trusted for this: it reports used=0 for our tokens
+// while these headers show the real count.
+func (c *Client) recordRateLimit(h http.Header) {
+	if r := h.Get("X-RateLimit-Resource"); r != "" && r != "core" {
+		return
+	}
+	limit, lErr := strconv.Atoi(h.Get("X-RateLimit-Limit"))
+	remaining, rErr := strconv.Atoi(h.Get("X-RateLimit-Remaining"))
+	reset, sErr := strconv.ParseInt(h.Get("X-RateLimit-Reset"), 10, 64)
+	if lErr != nil || rErr != nil || sErr != nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.budgets == nil {
+		c.budgets = map[int64]RateLimit{}
+	}
+	// within one window, the lowest count seen is the latest
+	if b, ok := c.budgets[reset]; !ok || remaining < b.Remaining {
+		c.budgets[reset] = RateLimit{Limit: limit, Remaining: remaining}
+	}
 }
 
 func (c *Client) get(ctx context.Context, url string, out interface{}) error {
@@ -192,11 +225,18 @@ func (c *Client) DependabotAlerts(ctx context.Context, repo string) ([]Dependabo
 	return out, nil
 }
 
-// RateLimit returns the core rate-limit budget this client draws from.
-func (c *Client) RateLimit(ctx context.Context) (RateLimit, error) {
-	var out rateLimitResponse
-	if err := c.get(ctx, c.baseURL+"/rate_limit", &out); err != nil {
-		return RateLimit{}, err
+// RateLimits returns every core window that hasn't reset yet, by reset time.
+func (c *Client) RateLimits() map[time.Time]RateLimit {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	now := c.now().Unix()
+	out := map[time.Time]RateLimit{}
+	for reset, b := range c.budgets {
+		if reset <= now {
+			delete(c.budgets, reset)
+			continue
+		}
+		out[time.Unix(reset, 0).UTC()] = b
 	}
-	return out.Resources.Core, nil
+	return out
 }
