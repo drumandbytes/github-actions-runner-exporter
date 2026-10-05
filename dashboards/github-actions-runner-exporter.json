@@ -8,7 +8,7 @@
     "prometheus"
   ],
   "schemaVersion": 39,
-  "version": 6,
+  "version": 7,
   "editable": true,
   "time": {
     "from": "now-24h",
@@ -34,6 +34,23 @@
         "current": {},
         "hide": 0,
         "refresh": 1
+      },
+      {
+        "name": "org",
+        "label": "GitHub org",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "query": {
+          "query": "label_values(github_org_info, org)",
+          "refId": "org"
+        },
+        "definition": "label_values(github_org_info, org)",
+        "refresh": 1,
+        "hide": 2,
+        "current": {}
       },
       {
         "name": "repo",
@@ -661,6 +678,13 @@
           "range": false,
           "refId": "A"
         }
+      ],
+      "links": [
+        {
+          "title": "All open PRs in the org",
+          "url": "https://github.com/pulls?q=is%3Aopen+is%3Apr+org%3A${org}",
+          "targetBlank": true
+        }
       ]
     },
     {
@@ -669,7 +693,7 @@
       "type": "bargauge",
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 8,
         "x": 0,
         "y": 18
       },
@@ -697,12 +721,21 @@
                 "color": "red"
               }
             ]
-          }
+          },
+          "noValue": "No open alerts"
         }
       },
       "options": {
         "orientation": "horizontal",
-        "displayMode": "gradient"
+        "displayMode": "gradient",
+        "sizing": "manual",
+        "minVizHeight": 16,
+        "maxVizHeight": 28,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 16
+        },
+        "namePlacement": "top"
       },
       "targets": [
         {
@@ -712,7 +745,99 @@
           "range": false,
           "refId": "A"
         }
+      ],
+      "description": "Open Dependabot alerts across the org. Click the title link for the list on GitHub.",
+      "links": [
+        {
+          "title": "Dependabot alerts on GitHub",
+          "url": "https://github.com/orgs/${org}/security/alerts/dependabot",
+          "targetBlank": true
+        }
       ]
+    },
+    {
+      "id": 25,
+      "title": "Dependabot Alerts by Repo",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Open alerts per repo and severity. Click a repo to open its Dependabot alerts on GitHub.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 18
+      },
+      "targets": [
+        {
+          "expr": "max by (repo, severity) (github_repo_dependabot_alerts_open)",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "severity",
+            "rowField": "repo",
+            "valueField": "Value",
+            "emptyValue": "zero"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "repo\\severity": "repo"
+            },
+            "indexByName": {
+              "repo\\severity": 0,
+              "critical": 1,
+              "high": 2,
+              "medium": 3,
+              "low": 4
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "No open alerts",
+          "unit": "short",
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "repo"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Dependabot alerts in ${__data.fields.repo}",
+                    "url": "https://github.com/${org}/${__data.fields.repo}/security/dependabot",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
     },
     {
       "id": 15,
@@ -720,8 +845,8 @@
       "type": "bargauge",
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
+        "w": 8,
+        "x": 16,
         "y": 18
       },
       "datasource": {
@@ -741,12 +866,30 @@
                 "color": "blue"
               }
             ]
-          }
+          },
+          "displayName": "${__field.labels.repo}",
+          "links": [
+            {
+              "title": "Open PRs in ${__field.labels.repo}",
+              "url": "https://github.com/${org}/${__field.labels.repo}/pulls",
+              "targetBlank": true
+            }
+          ]
         }
       },
       "options": {
         "orientation": "horizontal",
-        "displayMode": "gradient"
+        "displayMode": "gradient",
+        "namePlacement": "top",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "sizing": "manual",
+        "minVizHeight": 16,
+        "maxVizHeight": 28,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 16
+        }
       },
       "targets": [
         {
@@ -755,6 +898,14 @@
           "instant": true,
           "range": false,
           "refId": "A"
+        }
+      ],
+      "description": "Click a bar to open that repo's pull requests on GitHub.",
+      "links": [
+        {
+          "title": "All open PRs in the org",
+          "url": "https://github.com/pulls?q=is%3Aopen+is%3Apr+org%3A${org}",
+          "targetBlank": true
         }
       ]
     },

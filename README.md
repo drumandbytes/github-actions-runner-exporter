@@ -42,6 +42,7 @@ scrape.
 | `github_runner_up` | `runner`, `os` | 1 if the runner is registered and online, 0 if offline |
 | `github_runner_busy` | `runner`, `os` | 1 if the runner is currently executing a job, 0 if idle |
 | `github_org_up` | | 1 if the last org/repo stats poll succeeded, 0 if a stale cache is being served or the first poll is still running (about a minute after startup at ~25 repos) |
+| `github_org_info` | `org` | Always 1; the org this exporter watches. The dashboard reads it to link to github.com |
 | `github_org_repos_total` | `visibility` | Number of non-archived repos, by `public`/`private` |
 | `github_rate_limit_remaining` | | Remaining core API budget in the scarcest active window: the one that runs out first |
 | `github_rate_limit_limit` | | Total core API budget of that window |
@@ -153,7 +154,7 @@ images to GHCR with SLSA provenance attestation on push to `main`/tags.
 [`dashboards/github-actions-runner-exporter.json`](dashboards/github-actions-runner-exporter.json) covers every metric above:
 - runners online, offline and busy, with per-runner state timelines;
 - both exporter polls' health, so a stale cache is visible;
-- CI health per repo and workflow, open PRs, Dependabot alerts by severity, and the API rate limit;
+- CI health per repo and workflow, open PRs, Dependabot alerts by severity and by repo, and the API rate limit; the PR and Dependabot panels link through to the lists on github.com;
 - CI history: average and p95 run time per job, queue time per runner pool and per runner, and workflow runs by conclusion.
 
 Import it in Grafana (Dashboards → New → Import) and pick your Prometheus data source.
