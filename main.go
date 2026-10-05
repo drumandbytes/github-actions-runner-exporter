@@ -41,7 +41,7 @@ func main() {
 	}, cfg.OrgCacheTTL, cfg.OrgCacheMaxStale, log)
 
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(collector.New(runnerFetcher, orgFetcher, client.RateLimits, cfg.RunnerCacheTTL, cfg.OrgCacheTTL), feed)
+	registry.MustRegister(collector.New(cfg.GitHubOrg, runnerFetcher, orgFetcher, client.RateLimits, cfg.RunnerCacheTTL, cfg.OrgCacheTTL), feed)
 
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))

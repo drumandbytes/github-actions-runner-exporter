@@ -16,6 +16,7 @@ import (
 const namespace = "github"
 
 type Collector struct {
+	org           string
 	runnerFetcher *fetch.Fetcher[runners.Summary]
 	orgFetcher    *fetch.Fetcher[orgstats.Summary]
 	rateLimitFn   func() map[time.Time]github.RateLimit
@@ -23,6 +24,7 @@ type Collector struct {
 	runnerUp     *prometheus.Desc
 	runnerBusy   *prometheus.Desc
 	runnersUp    *prometheus.Desc
+	orgInfo      *prometheus.Desc
 	orgUp        *prometheus.Desc
 	reposTotal   *prometheus.Desc
 	rateLimit    *prometheus.Desc
@@ -37,7 +39,7 @@ type Collector struct {
 }
 
 // New builds the collector. The intervals only feed HELP text; polling is the Fetchers' job.
-func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetcher[orgstats.Summary], rateLimits func() map[time.Time]github.RateLimit, runnerCacheTTL, orgCacheTTL time.Duration) *Collector {
+func New(org string, runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetcher[orgstats.Summary], rateLimits func() map[time.Time]github.RateLimit, runnerCacheTTL, orgCacheTTL time.Duration) *Collector {
 	runnerNote := fmt.Sprintf(" Polled every %s.", runnerCacheTTL)
 	orgNote := fmt.Sprintf(" Polled every %s - not real-time by design, see internal/orgstats.", orgCacheTTL)
 	desc := func(subsystem, name, help string, labels []string) *prometheus.Desc {
@@ -45,6 +47,7 @@ func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetche
 	}
 
 	return &Collector{
+		org:           org,
 		runnerFetcher: runnerFetcher,
 		orgFetcher:    orgFetcher,
 		rateLimitFn:   rateLimits,
@@ -58,6 +61,9 @@ func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetche
 
 		orgUp: desc("org", "up",
 			"Whether the last scrape of the org/repo stats succeeded (1) or a stale cache is being served (0)."+orgNote, nil),
+		// lets dashboards build github.com links without a hand-set variable
+		orgInfo: desc("org", "info",
+			"Always 1; the GitHub org this exporter watches is in the org label.", []string{"org"}),
 		reposTotal: desc("org", "repos_total",
 			"Number of non-archived repos in the org."+orgNote, []string{"visibility"}),
 		rateLimit: desc("rate_limit", "remaining",
@@ -88,7 +94,7 @@ func New(runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *fetch.Fetche
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	for _, d := range []*prometheus.Desc{
 		c.runnersUp, c.runnerUp, c.runnerBusy,
-		c.orgUp, c.reposTotal, c.rateLimit, c.rateLimitCap, c.rateWindow,
+		c.orgInfo, c.orgUp, c.reposTotal, c.rateLimit, c.rateLimitCap, c.rateWindow,
 		c.repoOpenPRs, c.repoCILastRunConclusion, c.repoCILastRunAt, c.repoCIDuration, c.repoDependabot,
 	} {
 		ch <- d
@@ -99,6 +105,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	c.collectRunners(ch)
 	c.collectOrgStats(ch)
 	c.collectRateLimits(ch)
+	ch <- prometheus.MustNewConstMetric(c.orgInfo, prometheus.GaugeValue, 1, c.org)
 }
 
 // collectRateLimits reports every active core window plus the scarcest one,
