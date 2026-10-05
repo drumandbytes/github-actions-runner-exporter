@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.3.3...v1.4.0) (2026-10-05)
+
+
+### Features
+
+* link the dashboard's PR and Dependabot panels through to GitHub ([#32](https://github.com/drumandbytes/github-actions-runner-exporter/issues/32)) ([f4bfc17](https://github.com/drumandbytes/github-actions-runner-exporter/commit/f4bfc17a79516e0c78345ac2ab59ade7bad6b55a))
+
 ## [1.3.3](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.3.2...v1.3.3) (2026-10-05)
 
 
