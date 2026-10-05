@@ -56,7 +56,9 @@ type Feed struct {
 func NewFeed() *Feed { return newFeed(time.Now) }
 
 func newFeed(now func() time.Time) *Feed {
-	jobLabels := []string{"repo", "workflow", "job", "runner", "runner_label", "conclusion"}
+	// job_name, not job: Prometheus owns `job` (the scrape job) and would
+	// rename ours to exported_job
+	jobLabels := []string{"repo", "workflow", "job_name", "runner", "runner_label", "conclusion"}
 	return &Feed{
 		now:      now,
 		start:    now(),
@@ -107,7 +109,11 @@ func (f *Feed) Poll(ctx context.Context, client Client, repo string, active []gi
 		st = f.bootstrap(ctx, client, repo, active)
 		f.repos[repo] = st
 	}
-	f.advance(ctx, client, repo, st, now)
+	names := make(map[int64]string, len(active))
+	for _, wf := range active {
+		names[wf.ID] = wf.Name
+	}
+	f.advance(ctx, client, repo, st, names, now)
 
 	out := make([]WorkflowCI, 0, len(active))
 	for _, wf := range active {
@@ -139,7 +145,10 @@ func (f *Feed) bootstrap(ctx context.Context, client Client, repo string, active
 	return st
 }
 
-func (f *Feed) advance(ctx context.Context, client Client, repo string, st *repoState, now time.Time) {
+// names maps workflow ID to the workflow's own name. A run's name can't be
+// used for the label: Dependabot's runs carry a per-run title there
+// ("npm_and_yarn in / - Update #123"), a new series each run.
+func (f *Feed) advance(ctx context.Context, client Client, repo string, st *repoState, names map[int64]string, now time.Time) {
 	runs, err := client.RunsCreatedSince(ctx, repo, st.watermark)
 	if err != nil {
 		return
@@ -171,8 +180,12 @@ func (f *Feed) advance(ctx context.Context, client Client, repo string, st *repo
 				pin(r.CreatedAt)
 				continue
 			}
-			f.observe(repo, r, jobs, now)
-			f.runs.WithLabelValues(repo, r.Name, r.Conclusion).Inc()
+			workflow := names[r.WorkflowID]
+			if workflow == "" {
+				workflow = r.Name // workflow disabled or deleted since
+			}
+			f.observe(repo, workflow, jobs, now)
+			f.runs.WithLabelValues(repo, workflow, r.Conclusion).Inc()
 		}
 		f.seenRuns[key] = now
 		if prev, ok := st.last[r.WorkflowID]; !ok || r.UpdatedAt.After(prev.LastRunAt) {
@@ -189,7 +202,7 @@ func (f *Feed) advance(ctx context.Context, client Client, repo string, st *repo
 	}
 }
 
-func (f *Feed) observe(repo string, r github.WorkflowRun, jobs []github.Job, now time.Time) {
+func (f *Feed) observe(repo, workflow string, jobs []github.Job, now time.Time) {
 	for _, j := range jobs {
 		// skipped never queued or ran; no runner means cancelled before pickup
 		if j.Conclusion == "skipped" || j.RunnerName == "" {
@@ -201,7 +214,7 @@ func (f *Feed) observe(repo string, r github.WorkflowRun, jobs []github.Job, now
 		}
 		f.seenJobs[j.ID] = now
 
-		labels := []string{repo, r.Name, j.Name, runnerName(j), runnerLabel(j.Labels), j.Conclusion}
+		labels := []string{repo, workflow, j.Name, runnerName(j), runnerLabel(j.Labels), j.Conclusion}
 		if !j.CreatedAt.IsZero() && !j.StartedAt.Before(j.CreatedAt) {
 			f.queue.WithLabelValues(labels...).Observe(j.StartedAt.Sub(j.CreatedAt).Seconds())
 		}

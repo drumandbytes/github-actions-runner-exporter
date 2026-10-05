@@ -191,21 +191,21 @@ func TestDedupe(t *testing.T) {
 	want := `
 # HELP github_job_run_seconds Time a job ran on its runner (started to completed), recorded once per finished job.
 # TYPE github_job_run_seconds histogram
-github_job_run_seconds_bucket{conclusion="success",job="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="5"} 0
-github_job_run_seconds_bucket{conclusion="success",job="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="10"} 0
-github_job_run_seconds_bucket{conclusion="success",job="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="30"} 0
-github_job_run_seconds_bucket{conclusion="success",job="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="60"} 0
-github_job_run_seconds_bucket{conclusion="success",job="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="120"} 0
-github_job_run_seconds_bucket{conclusion="success",job="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="180"} 3
-github_job_run_seconds_bucket{conclusion="success",job="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="300"} 3
-github_job_run_seconds_bucket{conclusion="success",job="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="600"} 3
-github_job_run_seconds_bucket{conclusion="success",job="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="900"} 3
-github_job_run_seconds_bucket{conclusion="success",job="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="1200"} 3
-github_job_run_seconds_bucket{conclusion="success",job="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="1800"} 3
-github_job_run_seconds_bucket{conclusion="success",job="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="3600"} 3
-github_job_run_seconds_bucket{conclusion="success",job="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="+Inf"} 3
-github_job_run_seconds_sum{conclusion="success",job="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI"} 540
-github_job_run_seconds_count{conclusion="success",job="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI"} 3
+github_job_run_seconds_bucket{conclusion="success",job_name="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="5"} 0
+github_job_run_seconds_bucket{conclusion="success",job_name="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="10"} 0
+github_job_run_seconds_bucket{conclusion="success",job_name="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="30"} 0
+github_job_run_seconds_bucket{conclusion="success",job_name="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="60"} 0
+github_job_run_seconds_bucket{conclusion="success",job_name="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="120"} 0
+github_job_run_seconds_bucket{conclusion="success",job_name="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="180"} 3
+github_job_run_seconds_bucket{conclusion="success",job_name="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="300"} 3
+github_job_run_seconds_bucket{conclusion="success",job_name="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="600"} 3
+github_job_run_seconds_bucket{conclusion="success",job_name="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="900"} 3
+github_job_run_seconds_bucket{conclusion="success",job_name="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="1200"} 3
+github_job_run_seconds_bucket{conclusion="success",job_name="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="1800"} 3
+github_job_run_seconds_bucket{conclusion="success",job_name="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="3600"} 3
+github_job_run_seconds_bucket{conclusion="success",job_name="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI",le="+Inf"} 3
+github_job_run_seconds_sum{conclusion="success",job_name="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI"} 540
+github_job_run_seconds_count{conclusion="success",job_name="build",repo="repo",runner="gha-arm-1",runner_label="oracle-arm64",workflow="CI"} 3
 `
 	if err := testutil.CollectAndCompare(f, strings.NewReader(want), "github_job_run_seconds"); err != nil {
 		t.Fatal(err)
@@ -249,5 +249,20 @@ func TestBuild(t *testing.T) {
 	c.reposErr = errors.New("401")
 	if _, err := Build(context.Background(), c, NewFeed()); err == nil {
 		t.Fatal("Repos error not propagated")
+	}
+}
+
+func TestWorkflowLabelFromWorkflowList(t *testing.T) {
+	r := run(1, 1, "completed", t0.Add(time.Minute))
+	r.Name = "npm_and_yarn in / - Update #123" // Dependabot's per-run title
+	c := &fakeClient{runs: []github.WorkflowRun{r}, jobs: map[int64][]github.Job{1: {job(100, r.CreatedAt)}}}
+	f := newFeed((&clock{t0}).now)
+
+	f.Poll(context.Background(), c, "repo", []github.Workflow{{ID: 10, Name: "Dependabot Updates", State: "active"}})
+	if n := testutil.ToFloat64(f.runs.WithLabelValues("repo", "Dependabot Updates", "success")); n != 1 {
+		t.Fatalf("runs_total{workflow=\"Dependabot Updates\"} = %v, want 1", n)
+	}
+	if n := testutil.CollectAndCount(f, "github_workflow_runs_total"); n != 1 {
+		t.Fatalf("%d runs_total series, want only the workflow-named one", n)
 	}
 }
