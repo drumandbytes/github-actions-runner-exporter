@@ -8,7 +8,7 @@
     "prometheus"
   ],
   "schemaVersion": 39,
-  "version": 7,
+  "version": 8,
   "editable": true,
   "time": {
     "from": "now-24h",
@@ -746,14 +746,7 @@
           "refId": "A"
         }
       ],
-      "description": "Open Dependabot alerts across the org. Click the title link for the list on GitHub.",
-      "links": [
-        {
-          "title": "Dependabot alerts on GitHub",
-          "url": "https://github.com/orgs/${org}/security/alerts/dependabot",
-          "targetBlank": true
-        }
-      ]
+      "description": "Open Dependabot alerts across the org. For the alerts themselves, click a repo in Dependabot Alerts by Repo."
     },
     {
       "id": 25,
