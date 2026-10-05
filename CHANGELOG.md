@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.3](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.3.2...v1.3.3) (2026-10-05)
+
+
+### Bug Fixes
+
+* label job histograms with job_name and the workflow's own name ([#30](https://github.com/drumandbytes/github-actions-runner-exporter/issues/30)) ([fd8330f](https://github.com/drumandbytes/github-actions-runner-exporter/commit/fd8330f171e921c7865f305f168cc5c858713068))
+
 ## [1.3.2](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.3.1...v1.3.2) (2026-10-04)
 
 
