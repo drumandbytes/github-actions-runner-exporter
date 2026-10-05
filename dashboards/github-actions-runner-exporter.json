@@ -8,7 +8,7 @@
     "prometheus"
   ],
   "schemaVersion": 39,
-  "version": 8,
+  "version": 9,
   "editable": true,
   "time": {
     "from": "now-24h",
@@ -690,63 +690,110 @@
     {
       "id": 14,
       "title": "Dependabot Alerts by Severity (Org-wide)",
-      "type": "bargauge",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Open Dependabot alerts across the org. For the alerts themselves, click a repo in Dependabot Alerts by Repo.",
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 0,
         "y": 18
       },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "value": null,
-                "color": "green"
-              },
-              {
-                "value": 1,
-                "color": "yellow"
-              },
-              {
-                "value": 5,
-                "color": "red"
-              }
-            ]
-          },
-          "noValue": "No open alerts"
-        }
-      },
-      "options": {
-        "orientation": "horizontal",
-        "displayMode": "gradient",
-        "sizing": "manual",
-        "minVizHeight": 16,
-        "maxVizHeight": 28,
-        "text": {
-          "titleSize": 14,
-          "valueSize": 16
-        },
-        "namePlacement": "top"
-      },
       "targets": [
         {
           "expr": "sum by (severity) (max by (repo, severity) (github_repo_dependabot_alerts_open))",
-          "legendFormat": "{{severity}}",
+          "format": "table",
           "instant": true,
           "range": false,
           "refId": "A"
         }
       ],
-      "description": "Open Dependabot alerts across the org. For the alerts themselves, click a repo in Dependabot Alerts by Repo."
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "Value": "open alerts"
+            },
+            "indexByName": {
+              "severity": 0,
+              "Value": 1
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "open alerts",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "No open alerts",
+          "unit": "short",
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "severity"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "critical": {
+                        "color": "red",
+                        "index": 0
+                      },
+                      "high": {
+                        "color": "orange",
+                        "index": 1
+                      },
+                      "medium": {
+                        "color": "yellow",
+                        "index": 2
+                      },
+                      "low": {
+                        "color": "blue",
+                        "index": 3
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
     },
     {
       "id": 25,
