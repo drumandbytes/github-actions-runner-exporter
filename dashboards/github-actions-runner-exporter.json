@@ -8,7 +8,7 @@
     "prometheus"
   ],
   "schemaVersion": 39,
-  "version": 5,
+  "version": 6,
   "editable": true,
   "time": {
     "from": "now-24h",
@@ -997,35 +997,35 @@
       },
       "targets": [
         {
-          "expr": "sum by (repo, workflow, job) (increase(github_job_run_seconds_sum{repo=~\"$repo\"}[$__range])) / sum by (repo, workflow, job) (increase(github_job_run_seconds_count{repo=~\"$repo\"}[$__range]))",
+          "expr": "(sum by (repo, workflow, job_name) (increase(github_job_run_seconds_sum{repo=~\"$repo\"}[$__range])) / sum by (repo, workflow, job_name) (increase(github_job_run_seconds_count{repo=~\"$repo\"}[$__range]))) >= 0",
           "format": "table",
           "instant": true,
           "range": false,
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum by (le, repo, workflow, job) (increase(github_job_run_seconds_bucket{repo=~\"$repo\"}[$__range])))",
+          "expr": "(histogram_quantile(0.95, sum by (le, repo, workflow, job_name) (increase(github_job_run_seconds_bucket{repo=~\"$repo\"}[$__range])))) >= 0",
           "format": "table",
           "instant": true,
           "range": false,
           "refId": "B"
         },
         {
-          "expr": "sum by (repo, workflow, job) (increase(github_job_queue_seconds_sum{repo=~\"$repo\"}[$__range])) / sum by (repo, workflow, job) (increase(github_job_queue_seconds_count{repo=~\"$repo\"}[$__range]))",
+          "expr": "(sum by (repo, workflow, job_name) (increase(github_job_queue_seconds_sum{repo=~\"$repo\"}[$__range])) / sum by (repo, workflow, job_name) (increase(github_job_queue_seconds_count{repo=~\"$repo\"}[$__range]))) >= 0",
           "format": "table",
           "instant": true,
           "range": false,
           "refId": "C"
         },
         {
-          "expr": "histogram_quantile(0.95, sum by (le, repo, workflow, job) (increase(github_job_queue_seconds_bucket{repo=~\"$repo\"}[$__range])))",
+          "expr": "(histogram_quantile(0.95, sum by (le, repo, workflow, job_name) (increase(github_job_queue_seconds_bucket{repo=~\"$repo\"}[$__range])))) >= 0",
           "format": "table",
           "instant": true,
           "range": false,
           "refId": "D"
         },
         {
-          "expr": "sum by (repo, workflow, job) (increase(github_job_run_seconds_count{repo=~\"$repo\"}[$__range]))",
+          "expr": "(sum by (repo, workflow, job_name) (increase(github_job_run_seconds_count{repo=~\"$repo\"}[$__range]))) > 0",
           "format": "table",
           "instant": true,
           "range": false,
@@ -1048,17 +1048,18 @@
               "Value #B": "p95 run",
               "Value #C": "Avg queue",
               "Value #D": "p95 queue",
-              "Value #E": "Jobs"
+              "Value #E": "Jobs",
+              "job_name": "job"
             },
             "indexByName": {
               "repo": 0,
               "workflow": 1,
-              "job": 2,
               "Avg run": 3,
               "p95 run": 4,
               "Avg queue": 5,
               "p95 queue": 6,
-              "Jobs": 7
+              "Jobs": 7,
+              "job_name": 2
             }
           }
         },
@@ -1140,8 +1141,8 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, repo, workflow, job) (rate(github_job_run_seconds_bucket{repo=~\"$repo\"}[$window])))",
-          "legendFormat": "{{repo}} / {{workflow}} / {{job}}",
+          "expr": "(histogram_quantile(0.95, sum by (le, repo, workflow, job_name) (rate(github_job_run_seconds_bucket{repo=~\"$repo\"}[$window])))) >= 0",
+          "legendFormat": "{{repo}} / {{workflow}} / {{job_name}}",
           "refId": "A",
           "range": true,
           "instant": false
@@ -1189,8 +1190,8 @@
       },
       "targets": [
         {
-          "expr": "sum by (repo, workflow, job) (rate(github_job_run_seconds_sum{repo=~\"$repo\"}[$window])) / sum by (repo, workflow, job) (rate(github_job_run_seconds_count{repo=~\"$repo\"}[$window]))",
-          "legendFormat": "{{repo}} / {{workflow}} / {{job}}",
+          "expr": "(sum by (repo, workflow, job_name) (rate(github_job_run_seconds_sum{repo=~\"$repo\"}[$window])) / sum by (repo, workflow, job_name) (rate(github_job_run_seconds_count{repo=~\"$repo\"}[$window]))) >= 0",
+          "legendFormat": "{{repo}} / {{workflow}} / {{job_name}}",
           "refId": "A",
           "range": true,
           "instant": false
@@ -1238,14 +1239,14 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, runner_label) (rate(github_job_queue_seconds_bucket{repo=~\"$repo\"}[$window])))",
+          "expr": "(histogram_quantile(0.95, sum by (le, runner_label) (rate(github_job_queue_seconds_bucket{repo=~\"$repo\"}[$window])))) >= 0",
           "legendFormat": "p95 {{runner_label}}",
           "refId": "A",
           "range": true,
           "instant": false
         },
         {
-          "expr": "sum by (runner_label) (rate(github_job_queue_seconds_sum{repo=~\"$repo\"}[$window])) / sum by (runner_label) (rate(github_job_queue_seconds_count{repo=~\"$repo\"}[$window]))",
+          "expr": "(sum by (runner_label) (rate(github_job_queue_seconds_sum{repo=~\"$repo\"}[$window])) / sum by (runner_label) (rate(github_job_queue_seconds_count{repo=~\"$repo\"}[$window]))) >= 0",
           "legendFormat": "avg {{runner_label}}",
           "refId": "B",
           "range": true,
@@ -1294,14 +1295,14 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, runner) (rate(github_job_queue_seconds_bucket{repo=~\"$repo\"}[$window])))",
+          "expr": "(histogram_quantile(0.95, sum by (le, runner) (rate(github_job_queue_seconds_bucket{repo=~\"$repo\"}[$window])))) >= 0",
           "legendFormat": "p95 {{runner}}",
           "refId": "A",
           "range": true,
           "instant": false
         },
         {
-          "expr": "sum by (runner) (rate(github_job_queue_seconds_sum{repo=~\"$repo\"}[$window])) / sum by (runner) (rate(github_job_queue_seconds_count{repo=~\"$repo\"}[$window]))",
+          "expr": "(sum by (runner) (rate(github_job_queue_seconds_sum{repo=~\"$repo\"}[$window])) / sum by (runner) (rate(github_job_queue_seconds_count{repo=~\"$repo\"}[$window]))) >= 0",
           "legendFormat": "avg {{runner}}",
           "refId": "B",
           "range": true,

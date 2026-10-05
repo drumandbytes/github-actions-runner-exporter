@@ -50,7 +50,7 @@ scrape.
 | `github_repo_ci_last_run_conclusion` | `repo`, `workflow`, `url`, `conclusion` | Always 1 - an "info" metric. `conclusion` is GitHub's own string verbatim (`success`, `failure`, `cancelled`, `skipped`, `neutral`, `timed_out`, `action_required`, `stale`), not collapsed to pass/fail here - what counts as "actually broken" is a dashboard-level call. `url` links to the run on github.com. Absent if the workflow has never run |
 | `github_repo_ci_last_run_timestamp_seconds` | `repo`, `workflow` | Unix timestamp of that workflow's latest completed run |
 | `github_repo_ci_last_run_duration_seconds` | `repo`, `workflow` | Duration of that workflow's latest completed run, created → last update, so it includes queue time (the `github_job_*` histograms split the two) |
-| `github_job_queue_seconds` | `repo`, `workflow`, `job`, `runner`, `runner_label`, `conclusion` | Histogram: time each finished job waited for a runner (`created_at` → `started_at`) |
+| `github_job_queue_seconds` | `repo`, `workflow`, `job_name`, `runner`, `runner_label`, `conclusion` | Histogram: time each finished job waited for a runner (`created_at` → `started_at`) |
 | `github_job_run_seconds` | same as above | Histogram: time each finished job ran on its runner (`started_at` → `completed_at`) |
 | `github_workflow_runs_total` | `repo`, `workflow`, `conclusion` | Counter: completed workflow runs, once per run attempt |
 | `github_repo_dependabot_alerts_open` | `repo`, `severity` | Open Dependabot alerts by severity. Absent for a severity with zero open alerts |
@@ -74,7 +74,9 @@ Prometheus does.
   replayed. On startup one `LatestRunForWorkflow` call per active workflow
   fills the `github_repo_ci_last_run_*` metrics.
 - Skipped jobs and jobs cancelled before a runner picked them up aren't
-  recorded. GitHub-hosted runners show as `runner="github-hosted"` (their
+  recorded. The job's label is `job_name`, since Prometheus reserves `job`
+  for the scrape job. `workflow` is the workflow's own name, never a run's
+  title (Dependabot titles every run differently). GitHub-hosted runners show as `runner="github-hosted"` (their
   names are unique per job). `runner_label` is the job's `runs-on` labels
   minus `self-hosted`, e.g. `oracle-x64` / `oracle-arm64`: one per pool.
 - Buckets: 5s, 10s, 30s, 1m, 2m, 3m, 5m, 10m, 15m, 20m, 30m, 60m.
@@ -85,11 +87,11 @@ Example PromQL:
 
 ```promql
 # average job run time per job over the last day
-sum by (repo, workflow, job) (rate(github_job_run_seconds_sum[1d]))
-  / sum by (repo, workflow, job) (rate(github_job_run_seconds_count[1d]))
+sum by (repo, workflow, job_name) (rate(github_job_run_seconds_sum[1d]))
+  / sum by (repo, workflow, job_name) (rate(github_job_run_seconds_count[1d]))
 
 # p95 job run time per job
-histogram_quantile(0.95, sum by (le, repo, workflow, job) (rate(github_job_run_seconds_bucket[1d])))
+histogram_quantile(0.95, sum by (le, repo, workflow, job_name) (rate(github_job_run_seconds_bucket[1d])))
 
 # p95 queue time per runner pool
 histogram_quantile(0.95, sum by (le, runner_label) (rate(github_job_queue_seconds_bucket[1d])))
