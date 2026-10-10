@@ -149,7 +149,7 @@ images to GHCR with SLSA provenance attestation on push to `main`/tags.
 
 ## Grafana dashboard
 
-![Grafana dashboard: runners online/offline/busy, poll health, per-runner online and busy timelines, org repo counts, API rate limit and open PRs](docs/dashboard.png)
+![Grafana dashboard: runner online/busy state and poll health, org repo counts, API rate-limit budgets, Dependabot alerts and open PRs with links to GitHub, CI health per workflow, and CI history with job run and queue times per job, runner pool and runner, and workflow runs by conclusion](docs/dashboard.png)
 
 [`dashboards/github-actions-runner-exporter.json`](dashboards/github-actions-runner-exporter.json) covers every metric above:
 - runners online, offline and busy, with per-runner state timelines;
