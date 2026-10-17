@@ -157,7 +157,7 @@ images to GHCR with SLSA provenance attestation on push to `main`/tags.
 - CI health per repo and workflow, open PRs, Dependabot alerts by severity and by repo, and the API rate limit; the PR and Dependabot panels link through to the lists on github.com;
 - CI history: average and p95 run time per job, queue time per runner pool and per runner, and workflow runs by conclusion.
 
-Import it in Grafana (Dashboards → New → Import) and pick your Prometheus data source.
+Import it in Grafana (Dashboards → New → Import) by ID **[25832](https://grafana.com/grafana/dashboards/25832)**, or upload the JSON file, and pick your Prometheus data source.
 
 ## Alerting
 
