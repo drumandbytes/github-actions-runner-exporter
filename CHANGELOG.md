@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.4.0...v1.4.1) (2026-10-20)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/prometheus/client_golang ([#37](https://github.com/drumandbytes/github-actions-runner-exporter/issues/37)) ([6791d31](https://github.com/drumandbytes/github-actions-runner-exporter/commit/6791d31ae8c59c31ee3150f5003b2c6e289ee5c1))
+
 ## [1.4.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.3.3...v1.4.0) (2026-10-05)
 
 
