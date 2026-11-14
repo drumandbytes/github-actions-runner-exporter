@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.6.1...v1.7.0) (2026-11-14)
+
+
+### Features
+
+* **metrics:** github_release_asset_downloads_total as a counter, github_org_repos as a gauge name ([#47](https://github.com/drumandbytes/github-actions-runner-exporter/issues/47)) ([806191a](https://github.com/drumandbytes/github-actions-runner-exporter/commit/806191a26cca3df9b09347d1f0220a00f984a667))
+
 ## [1.6.1](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.6.0...v1.6.1) (2026-11-14)
 
 
