@@ -101,6 +101,27 @@ histogram_quantile(0.95, sum by (le, runner_label) (rate(github_job_queue_second
 sum by (conclusion) (increase(github_workflow_runs_total[1d]))
 ```
 
+## Adoption stats
+
+Optional, off unless `ADOPTION_REPOS` is set (comma-separated repo names in
+`GITHUB_ORG`). Polled on its own `ADOPTION_CACHE_TTL` (default 1h), since
+none of it moves fast. Everything is public GitHub data or your own repo
+traffic; nothing is collected from the tracked project's users.
+
+| Metric | Labels | Meaning |
+| --- | --- | --- |
+| `github_adoption_up` | | 1 if the last poll succeeded, 0 if stale |
+| `github_repo_stars`, `_forks`, `_watchers`, `_open_issues` | `repo` | Counts; open issues exclude PRs |
+| `github_release_asset_downloads` | `repo`, `tag`, `asset` | Cumulative `download_count` per release asset (drafts skipped). Chart with `increase()` |
+| `github_repo_traffic_ok` | `repo` | 0 if the token lacks push access, so the traffic metrics below are absent |
+| `github_repo_traffic_views_daily`, `_view_uniques_daily`, `_clones_daily`, `_clone_uniques_daily` | `repo`, `date` | One series per UTC day; today's is partial |
+| `github_repo_traffic_referrer_views`, `_referrer_uniques` | `repo`, `referrer` | Top 10 referrers, last 14 days |
+| `github_repo_traffic_path_views`, `_path_uniques` | `repo`, `path` | Top 10 content paths, last 14 days |
+
+GitHub keeps traffic for only 14 days, so the exporter must keep running to
+build history; Prometheus is the store. Not covered: container (ghcr.io) pull
+counts, which no GitHub API exposes.
+
 ## Rate limit
 
 The budget comes from the `X-RateLimit-*` headers of the exporter's own API
@@ -124,6 +145,9 @@ window it sees and alerts on the lowest.
 | `RUNNER_CACHE_MAX_STALE` | `5m` | |
 | `ORG_CACHE_TTL` | `5m` | |
 | `ORG_CACHE_MAX_STALE` | `30m` | |
+| `ADOPTION_REPOS` | | no; enables [adoption stats](#adoption-stats) |
+| `ADOPTION_CACHE_TTL` | `1h` | |
+| `ADOPTION_CACHE_MAX_STALE` | `3h` | |
 
 ## Token permissions
 
@@ -131,6 +155,8 @@ A fine-grained PAT needs:
 - **Repository access: All repositories** — scoping it to a curated list means every repo-level metric (PRs, CI, Dependabot) silently only covers the repos you picked.
 - Repository permissions: **Metadata** (read, auto-included), **Pull requests** (read), **Actions** (read), **Dependabot alerts** (read).
 - Organization permissions: whatever GitHub's console offers for self-hosted runners (its REST API docs only document `admin:org` for the classic-PAT path to that endpoint — narrower fine-grained scoping isn't guaranteed available for every org plan).
+
+Adoption traffic (`ADOPTION_REPOS`) additionally needs **Administration** (read) on those repos, which is what GitHub's traffic endpoints require beyond push access. Stars, forks and release downloads need nothing extra. Without it, traffic metrics are simply absent (`github_repo_traffic_ok` = 0).
 
 ## Build / test / run
 

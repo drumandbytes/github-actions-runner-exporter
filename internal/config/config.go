@@ -4,6 +4,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -20,6 +21,11 @@ type Config struct {
 	// ~4 API calls per repo per refresh: long interval to stay inside the rate limit
 	OrgCacheTTL      time.Duration
 	OrgCacheMaxStale time.Duration
+
+	// repos (names within GITHUB_ORG) to track adoption for; empty disables it
+	AdoptionRepos         []string
+	AdoptionCacheTTL      time.Duration
+	AdoptionCacheMaxStale time.Duration
 }
 
 func FromEnv() (Config, error) {
@@ -34,6 +40,10 @@ func FromEnv() (Config, error) {
 
 		OrgCacheTTL:      envDuration("ORG_CACHE_TTL", 5*time.Minute),
 		OrgCacheMaxStale: envDuration("ORG_CACHE_MAX_STALE", 30*time.Minute),
+
+		AdoptionRepos:         splitList(os.Getenv("ADOPTION_REPOS")),
+		AdoptionCacheTTL:      envDuration("ADOPTION_CACHE_TTL", time.Hour),
+		AdoptionCacheMaxStale: envDuration("ADOPTION_CACHE_MAX_STALE", 3*time.Hour),
 	}
 
 	if c.GitHubOrg == "" {
@@ -62,4 +72,14 @@ func envDuration(key string, def time.Duration) time.Duration {
 		return def
 	}
 	return d
+}
+
+func splitList(v string) []string {
+	var out []string
+	for _, p := range strings.Split(v, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }

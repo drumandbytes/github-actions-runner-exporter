@@ -90,3 +90,47 @@ type RateLimit struct {
 	Limit     int
 	Remaining int
 }
+
+// RepoInfo is the adoption-relevant subset of GET /repos/{owner}/{repo}.
+type RepoInfo struct {
+	Stars            int `json:"stargazers_count"`
+	Forks            int `json:"forks_count"`
+	Watchers         int `json:"subscribers_count"`
+	OpenIssuesAndPRs int `json:"open_issues_count"` // GitHub counts PRs as issues here
+}
+
+type Release struct {
+	TagName    string         `json:"tag_name"`
+	Draft      bool           `json:"draft"`
+	Prerelease bool           `json:"prerelease"`
+	Assets     []ReleaseAsset `json:"assets"`
+}
+
+type ReleaseAsset struct {
+	Name          string `json:"name"`
+	DownloadCount int64  `json:"download_count"` // cumulative
+}
+
+// TrafficDay is one day of views or clones (UTC).
+type TrafficDay struct {
+	Timestamp time.Time `json:"timestamp"`
+	Count     int       `json:"count"`
+	Uniques   int       `json:"uniques"`
+}
+
+type trafficResponse struct {
+	Views  []TrafficDay `json:"views"`
+	Clones []TrafficDay `json:"clones"`
+}
+
+type Referrer struct {
+	Referrer string `json:"referrer"`
+	Count    int    `json:"count"`
+	Uniques  int    `json:"uniques"`
+}
+
+type PopularPath struct {
+	Path    string `json:"path"`
+	Count   int    `json:"count"`
+	Uniques int    `json:"uniques"`
+}

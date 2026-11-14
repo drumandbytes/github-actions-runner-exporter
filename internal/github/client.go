@@ -240,3 +240,54 @@ func (c *Client) RateLimits() map[time.Time]RateLimit {
 	}
 	return out
 }
+
+// RepoInfo returns stars, forks, watchers and the open issue+PR count.
+func (c *Client) RepoInfo(ctx context.Context, repo string) (RepoInfo, error) {
+	var out RepoInfo
+	err := c.get(ctx, fmt.Sprintf("%s/repos/%s/%s", c.baseURL, c.org, repo), &out)
+	return out, err
+}
+
+// Releases returns a repo's published releases with their assets, following pagination.
+func (c *Client) Releases(ctx context.Context, repo string) ([]Release, error) {
+	next := fmt.Sprintf("%s/repos/%s/%s/releases?per_page=100", c.baseURL, c.org, repo)
+	var releases []Release
+	for next != "" {
+		var out []Release
+		var err error
+		if next, err = c.getPage(ctx, next, &out); err != nil {
+			return nil, err
+		}
+		releases = append(releases, out...)
+	}
+	return releases, nil
+}
+
+// TrafficViews returns the last 14 days of page views, one entry per UTC day.
+// Needs push access to the repo.
+func (c *Client) TrafficViews(ctx context.Context, repo string) ([]TrafficDay, error) {
+	var out trafficResponse
+	err := c.get(ctx, fmt.Sprintf("%s/repos/%s/%s/traffic/views?per=day", c.baseURL, c.org, repo), &out)
+	return out.Views, err
+}
+
+// TrafficClones returns the last 14 days of git clones, one entry per UTC day.
+func (c *Client) TrafficClones(ctx context.Context, repo string) ([]TrafficDay, error) {
+	var out trafficResponse
+	err := c.get(ctx, fmt.Sprintf("%s/repos/%s/%s/traffic/clones?per=day", c.baseURL, c.org, repo), &out)
+	return out.Clones, err
+}
+
+// TrafficReferrers returns the top 10 referrers of the last 14 days.
+func (c *Client) TrafficReferrers(ctx context.Context, repo string) ([]Referrer, error) {
+	var out []Referrer
+	err := c.get(ctx, fmt.Sprintf("%s/repos/%s/%s/traffic/popular/referrers", c.baseURL, c.org, repo), &out)
+	return out, err
+}
+
+// TrafficPaths returns the top 10 content paths of the last 14 days.
+func (c *Client) TrafficPaths(ctx context.Context, repo string) ([]PopularPath, error) {
+	var out []PopularPath
+	err := c.get(ctx, fmt.Sprintf("%s/repos/%s/%s/traffic/popular/paths", c.baseURL, c.org, repo), &out)
+	return out, err
+}
