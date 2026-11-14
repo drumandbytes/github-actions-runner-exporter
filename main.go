@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/drumandbytes/github-actions-runner-exporter/internal/adoption"
 	"github.com/drumandbytes/github-actions-runner-exporter/internal/collector"
 	"github.com/drumandbytes/github-actions-runner-exporter/internal/config"
 	"github.com/drumandbytes/github-actions-runner-exporter/internal/fetch"
@@ -42,6 +43,13 @@ func main() {
 
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collector.New(cfg.GitHubOrg, runnerFetcher, orgFetcher, client.RateLimits, cfg.RunnerCacheTTL, cfg.OrgCacheTTL), feed)
+
+	if len(cfg.AdoptionRepos) > 0 {
+		adoptionFetcher := fetch.New(func(ctx context.Context) (adoption.Summary, error) {
+			return adoption.Build(ctx, client, cfg.AdoptionRepos)
+		}, cfg.AdoptionCacheTTL, cfg.AdoptionCacheMaxStale, log)
+		registry.MustRegister(collector.NewAdoption(adoptionFetcher, cfg.AdoptionCacheTTL))
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))

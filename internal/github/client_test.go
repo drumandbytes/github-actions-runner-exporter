@@ -108,3 +108,25 @@ func TestRateLimitFromHeaders(t *testing.T) {
 		t.Fatalf("after reset: %+v, want only the later window", got)
 	}
 }
+
+func TestReleasesPaginates(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("page") == "" {
+			w.Header().Set("Link", fmt.Sprintf(`<http://%s%s?page=2>; rel="next"`, r.Host, r.URL.Path))
+			_, _ = w.Write([]byte(`[{"tag_name":"v2","assets":[{"name":"a","download_count":5}]}]`))
+			return
+		}
+		_, _ = w.Write([]byte(`[{"tag_name":"v1","draft":true}]`))
+	}))
+	defer srv.Close()
+
+	c := NewClient("org", "token", time.Second)
+	c.baseURL = srv.URL
+	rels, err := c.Releases(context.Background(), "repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rels) != 2 || rels[0].Assets[0].DownloadCount != 5 || !rels[1].Draft {
+		t.Fatalf("releases = %+v", rels)
+	}
+}
