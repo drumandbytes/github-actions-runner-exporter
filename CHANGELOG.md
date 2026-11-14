@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.7.0...v1.7.1) (2026-11-14)
+
+
+### Bug Fixes
+
+* **dashboard:** stack three compact tiles beside the traffic charts ([#49](https://github.com/drumandbytes/github-actions-runner-exporter/issues/49)) ([212faae](https://github.com/drumandbytes/github-actions-runner-exporter/commit/212faae3f8d0b2654f4ac4db063b835a7e0e37fd))
+
 ## [1.7.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.6.1...v1.7.0) (2026-11-14)
 
 
