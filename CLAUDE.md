@@ -38,7 +38,8 @@ depending on which TTL "wins".
   see, or with Dependabot disabled, shouldn't blank out every other
   repo's data) — but propagates a failure of `Repos` itself, since nothing else can
   proceed without it.
-- `internal/collector` — adapts both `Summary` types into Prometheus
+- `internal/adoption` — opt-in (`ADOPTION_REPOS`) third domain on its own Fetcher (default 1h): stars/forks/watchers, release asset `download_count`, and the 14-day traffic API as per-UTC-day series so Prometheus keeps the history GitHub drops. A 403 on traffic (token lacks Administration read) only sets `github_repo_traffic_ok` 0; it never fails the poll. Registered separately (`collector.Adoption`).
+- `internal/collector` — adapts the runner and org `Summary` types into Prometheus
   metrics for `/metrics`, on one shared `prometheus.Collector`.
 - `internal/config` — env var parsing (see README's Configuration table).
 
