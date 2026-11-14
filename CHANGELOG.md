@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.5.0...v1.6.0) (2026-11-14)
+
+
+### Features
+
+* **dashboard:** generic GitHub repo adoption dashboard ([#42](https://github.com/drumandbytes/github-actions-runner-exporter/issues/42)) ([42b1ee8](https://github.com/drumandbytes/github-actions-runner-exporter/commit/42b1ee80f97d6ca01e7aea8ed6643f3ff16cd51d))
+
 ## [1.5.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.4.1...v1.5.0) (2026-11-14)
 
 
