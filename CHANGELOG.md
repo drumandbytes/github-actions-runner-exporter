@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.6.0...v1.6.1) (2026-11-14)
+
+
+### Bug Fixes
+
+* **dashboard:** add the sharing metadata grafana.com requires to the traffic dashboard ([#45](https://github.com/drumandbytes/github-actions-runner-exporter/issues/45)) ([01eb036](https://github.com/drumandbytes/github-actions-runner-exporter/commit/01eb03626a222f1e5b7146201c305965dd82d8fc))
+
 ## [1.6.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.5.0...v1.6.0) (2026-11-14)
 
 
