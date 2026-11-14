@@ -185,6 +185,10 @@ images to GHCR with SLSA provenance attestation on push to `main`/tags.
 
 Import it in Grafana (Dashboards → New → Import) by ID **[25832](https://grafana.com/grafana/dashboards/25832)**, or upload the JSON file, and pick your Prometheus data source.
 
+### Adoption dashboard
+
+[`dashboards/github-repo-adoption.json`](dashboards/github-repo-adoption.json) charts the [adoption stats](#adoption-stats) of the repos in `ADOPTION_REPOS`: release downloads (total, per day, per release and asset), stars, forks, watchers, open issues, and repo traffic (views, clones, top referrers, popular paths). Pick the repo with the `Repo` variable. The "Traffic API" tile reads "no access" until the token has Administration (read). Import it the same way as the dashboard above.
+
 ## Alerting
 
 [`alerts/github-actions-runner-exporter.rules.yml`](alerts/github-actions-runner-exporter.rules.yml) has ready-made Prometheus alerting rules. Add it under `rule_files:`, or paste its group into a `PrometheusRule`'s `spec.groups` on kube-prometheus-stack.
