@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.4.1...v1.5.0) (2026-11-14)
+
+
+### Features
+
+* **adoption:** optional stars, release downloads and repo traffic metrics for chosen repos ([#39](https://github.com/drumandbytes/github-actions-runner-exporter/issues/39)) ([7a47aa1](https://github.com/drumandbytes/github-actions-runner-exporter/commit/7a47aa172a4d9706f96c5c98858c3c1319197e79))
+
 ## [1.4.1](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.4.0...v1.4.1) (2026-10-20)
 
 
