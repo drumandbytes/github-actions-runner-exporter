@@ -43,7 +43,7 @@ scrape.
 | `github_runner_busy` | `runner`, `os` | 1 if the runner is currently executing a job, 0 if idle |
 | `github_org_up` | | 1 if the last org/repo stats poll succeeded, 0 if a stale cache is being served or the first poll is still running (about a minute after startup at ~25 repos) |
 | `github_org_info` | `org` | Always 1; the org this exporter watches. The dashboard reads it to link to github.com |
-| `github_org_repos_total` | `visibility` | Number of non-archived repos, by `public`/`private` |
+| `github_org_repos` | `visibility` | Number of non-archived repos, by `public`/`private` |
 | `github_rate_limit_remaining` | | Remaining core API budget in the scarcest active window: the one that runs out first |
 | `github_rate_limit_limit` | | Total core API budget of that window |
 | `github_rate_limit_window_remaining` | `reset` | Remaining budget per active core window, labelled with its reset time. GitHub counts per region, so one token can have several windows at once, and which one a call counts against depends on the endpoint. A window's series disappears once it resets |
@@ -55,6 +55,8 @@ scrape.
 | `github_job_run_seconds` | same as above | Histogram: time each finished job ran on its runner (`started_at` → `completed_at`) |
 | `github_workflow_runs_total` | `repo`, `workflow`, `conclusion` | Counter: completed workflow runs, once per run attempt |
 | `github_repo_dependabot_alerts_open` | `repo`, `severity` | Open Dependabot alerts by severity. Absent for a severity with zero open alerts |
+
+> **Renamed:** `github_org_repos_total` is now `github_org_repos` (it is a gauge, and `_total` is reserved for counters), and `github_release_asset_downloads` is now the counter `github_release_asset_downloads_total`. Update custom queries and re-import the dashboards.
 
 ## Run history
 
@@ -112,7 +114,7 @@ traffic; nothing is collected from the tracked project's users.
 | --- | --- | --- |
 | `github_adoption_up` | | 1 if the last poll succeeded, 0 if stale |
 | `github_repo_stars`, `_forks`, `_watchers`, `_open_issues` | `repo` | Counts; open issues exclude PRs |
-| `github_release_asset_downloads` | `repo`, `tag`, `asset` | Cumulative `download_count` per release asset (drafts skipped). Chart with `increase()` |
+| `github_release_asset_downloads_total` | `repo`, `tag`, `asset` | Cumulative `download_count` per release asset (drafts skipped). Chart with `increase()` |
 | `github_repo_traffic_ok` | `repo` | 0 if the token lacks push access, so the traffic metrics below are absent |
 | `github_repo_traffic_views_daily`, `_view_uniques_daily`, `_clones_daily`, `_clone_uniques_daily` | `repo`, `date` | One series per UTC day; today's is partial |
 | `github_repo_traffic_referrer_views`, `_referrer_uniques` | `repo`, `referrer` | Top 10 referrers, last 14 days |

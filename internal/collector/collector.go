@@ -64,7 +64,7 @@ func New(org string, runnerFetcher *fetch.Fetcher[runners.Summary], orgFetcher *
 		// lets dashboards build github.com links without a hand-set variable
 		orgInfo: desc("org", "info",
 			"Always 1; the GitHub org this exporter watches is in the org label.", []string{"org"}),
-		reposTotal: desc("org", "repos_total",
+		reposTotal: desc("org", "repos",
 			"Number of non-archived repos in the org."+orgNote, []string{"visibility"}),
 		rateLimit: desc("rate_limit", "remaining",
 			"Remaining core API rate-limit budget, as of the latest GitHub response.", nil),
