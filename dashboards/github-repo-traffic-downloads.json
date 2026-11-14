@@ -308,7 +308,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(github_release_asset_downloads{repo=~\"$repo\",asset!~\".*(checksums|\\\\.sbom|\\\\.sig|\\\\.pem|\\\\.json).*\"})",
+          "expr": "sum(github_release_asset_downloads_total{repo=~\"$repo\",asset!~\".*(checksums|\\\\.sbom|\\\\.sig|\\\\.pem|\\\\.json).*\"})",
           "instant": true,
           "range": false
         }
@@ -355,7 +355,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(increase(github_release_asset_downloads{repo=~\"$repo\",asset!~\".*(checksums|\\\\.sbom|\\\\.sig|\\\\.pem|\\\\.json).*\"}[$__range]))",
+          "expr": "sum(increase(github_release_asset_downloads_total{repo=~\"$repo\",asset!~\".*(checksums|\\\\.sbom|\\\\.sig|\\\\.pem|\\\\.json).*\"}[$__range]))",
           "instant": true,
           "range": false
         }
@@ -415,7 +415,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (asset) (label_replace(increase(github_release_asset_downloads{repo=~\"$repo\",asset!~\".*(checksums|\\\\.sbom|\\\\.sig|\\\\.pem|\\\\.json).*\"}[1d]), \"asset\", \"$1$2\", \"asset\", \"(.*?)[_-]v?[0-9]+\\\\.[0-9]+\\\\.[0-9]+(.*)\"))",
+          "expr": "sum by (asset) (label_replace(increase(github_release_asset_downloads_total{repo=~\"$repo\",asset!~\".*(checksums|\\\\.sbom|\\\\.sig|\\\\.pem|\\\\.json).*\"}[1d]), \"asset\", \"$1$2\", \"asset\", \"(.*?)[_-]v?[0-9]+\\\\.[0-9]+\\\\.[0-9]+(.*)\"))",
           "legendFormat": "{{asset}}"
         }
       ],
@@ -465,7 +465,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (tag) (github_release_asset_downloads{repo=~\"$repo\",asset!~\".*(checksums|\\\\.sbom|\\\\.sig|\\\\.pem|\\\\.json).*\"})",
+          "expr": "sum by (tag) (github_release_asset_downloads_total{repo=~\"$repo\",asset!~\".*(checksums|\\\\.sbom|\\\\.sig|\\\\.pem|\\\\.json).*\"})",
           "instant": true,
           "range": false,
           "format": "table"
@@ -534,7 +534,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (tag, asset) (github_release_asset_downloads{repo=~\"$repo\"})",
+          "expr": "sum by (tag, asset) (github_release_asset_downloads_total{repo=~\"$repo\"})",
           "instant": true,
           "range": false,
           "format": "table"

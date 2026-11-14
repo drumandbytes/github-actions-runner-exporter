@@ -35,7 +35,7 @@ func NewAdoption(f *fetch.Fetcher[adoption.Summary], ttl time.Duration) *Adoptio
 		forks:      d("repo", "forks", "Forks.", "repo"),
 		watchers:   d("repo", "watchers", "Watchers (subscribers).", "repo"),
 		openIssues: d("repo", "open_issues", "Open issues, excluding pull requests.", "repo"),
-		downloads: d("release", "asset_downloads", "Cumulative download count of a release asset. Chart with increase(), not raw.",
+		downloads: d("release", "asset_downloads_total", "Cumulative download count of a release asset. Chart with increase(), not raw.",
 			"repo", "tag", "asset"),
 
 		trafficOK: d("repo", "traffic_ok", "Whether the traffic API answered (1) or the token lacks push access (0).", "repo"),
@@ -79,7 +79,7 @@ func (a *Adoption) Collect(ch chan<- prometheus.Metric) {
 		g(a.watchers, float64(r.Watchers), r.Name)
 		g(a.openIssues, float64(r.OpenIssues), r.Name)
 		for _, x := range r.Downloads {
-			g(a.downloads, float64(x.Count), r.Name, x.Tag, x.Asset)
+			ch <- prometheus.MustNewConstMetric(a.downloads, prometheus.CounterValue, float64(x.Count), r.Name, x.Tag, x.Asset)
 		}
 
 		if !r.TrafficOK {

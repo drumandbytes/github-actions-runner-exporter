@@ -601,7 +601,7 @@
       },
       "targets": [
         {
-          "expr": "max by (visibility) (github_org_repos_total{visibility=\"public\"})",
+          "expr": "max by (visibility) (github_org_repos{visibility=\"public\"})",
           "instant": true,
           "range": false,
           "refId": "A"
@@ -629,7 +629,7 @@
       },
       "targets": [
         {
-          "expr": "max by (visibility) (github_org_repos_total{visibility=\"private\"})",
+          "expr": "max by (visibility) (github_org_repos{visibility=\"private\"})",
           "instant": true,
           "range": false,
           "refId": "A"
