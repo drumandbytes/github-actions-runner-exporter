@@ -19,8 +19,8 @@ jobs:
        github.event.workflow_run.actor.login == 'dnb-robot[bot]')
     uses: drumandbytes/reusable-actions/.github/workflows/auto-merge.yml@v1
     with:
-      # release-please's own PR; patch bumps auto-merge, minor/major don't.
-      patch-only-authors: '["dnb-robot[bot]"]'
+      # release-please's own PR: every bump auto-merges, not just patches.
+      allowed-authors: '["dependabot[bot]","dnb-robot[bot]"]'
       # A GITHUB_TOKEN merge triggers no workflows, so the release would never
       # be cut (reusable-actions#16).
       use-app-token-for-merge: true
