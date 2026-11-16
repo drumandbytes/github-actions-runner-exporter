@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.2](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.7.1...v1.7.2) (2026-11-16)
+
+
+### Bug Fixes
+
+* **dashboard:** show the downloads range tile as a whole number ([#52](https://github.com/drumandbytes/github-actions-runner-exporter/issues/52)) ([0255b56](https://github.com/drumandbytes/github-actions-runner-exporter/commit/0255b56d9763d6bdbd9d0b0d5f44e2f23da4c7fb))
+
 ## [1.7.1](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.7.0...v1.7.1) (2026-11-14)
 
 
