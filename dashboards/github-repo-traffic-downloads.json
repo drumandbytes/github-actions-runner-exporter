@@ -376,7 +376,8 @@
       "fieldConfig": {
         "defaults": {
           "unit": "none",
-          "noValue": "-"
+          "noValue": "-",
+          "decimals": 0
         },
         "overrides": []
       }
