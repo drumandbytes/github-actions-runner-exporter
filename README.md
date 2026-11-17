@@ -189,7 +189,7 @@ Import it in Grafana (Dashboards → New → Import) by ID **[25832](https://gra
 
 ### Traffic & Downloads dashboard
 
-[`dashboards/github-repo-traffic-downloads.json`](dashboards/github-repo-traffic-downloads.json) charts the [adoption stats](#adoption-stats) of the repos in `ADOPTION_REPOS`: release downloads (total, per day, per release and asset), stars, forks, watchers, open issues, and repo traffic (views, clones, top referrers, popular paths). Pick the repo with the `Repo` variable. The "Traffic API" tile reads "no access" until the token has Administration (read). Import it the same way as the dashboard above.
+[`dashboards/github-repo-traffic-downloads.json`](dashboards/github-repo-traffic-downloads.json) charts the [adoption stats](#adoption-stats) of the repos in `ADOPTION_REPOS`: release downloads (total, per day, per release and asset), stars, forks, watchers, open issues, and repo traffic (views, clones, top referrers, popular paths). Pick the repo with the `Repo` variable. The "Traffic API" tile reads "no access" until the token has Administration (read). Import it by ID **[26059](https://grafana.com/grafana/dashboards/26059)**, or upload the JSON file, the same way as the dashboard above.
 
 ## Alerting
 
