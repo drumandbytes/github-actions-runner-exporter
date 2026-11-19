@@ -130,3 +130,48 @@ func TestReleasesPaginates(t *testing.T) {
 		t.Fatalf("releases = %+v", rels)
 	}
 }
+
+// pagedServer serves body1 on the first request and body2 on page=2, with a Link header between them.
+func pagedServer(body1, body2 string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("page") == "" {
+			w.Header().Set("Link", fmt.Sprintf(`<http://%s%s?page=2>; rel="next"`, r.Host, r.URL.Path))
+			_, _ = w.Write([]byte(body1))
+			return
+		}
+		_, _ = w.Write([]byte(body2))
+	}))
+}
+
+func TestReposPaginates(t *testing.T) {
+	srv := pagedServer(`[{"name":"a"}]`, `[{"name":"b","fork":true}]`)
+	defer srv.Close()
+	c := NewClient("org", "token", time.Second)
+	c.baseURL = srv.URL
+	repos, err := c.Repos(context.Background())
+	if err != nil || len(repos) != 2 || repos[1].Name != "b" || !repos[1].Fork {
+		t.Fatalf("repos = %+v, %v", repos, err)
+	}
+}
+
+func TestRunnersPaginates(t *testing.T) {
+	srv := pagedServer(`{"total_count":2,"runners":[{"name":"r1"}]}`, `{"total_count":2,"runners":[{"name":"r2"}]}`)
+	defer srv.Close()
+	c := NewClient("org", "token", time.Second)
+	c.baseURL = srv.URL
+	runners, err := c.Runners(context.Background())
+	if err != nil || len(runners) != 2 || runners[1].Name != "r2" {
+		t.Fatalf("runners = %+v, %v", runners, err)
+	}
+}
+
+func TestWorkflowsPaginates(t *testing.T) {
+	srv := pagedServer(`{"total_count":2,"workflows":[{"id":1,"name":"ci"}]}`, `{"total_count":2,"workflows":[{"id":2,"name":"deploy"}]}`)
+	defer srv.Close()
+	c := NewClient("org", "token", time.Second)
+	c.baseURL = srv.URL
+	wfs, err := c.Workflows(context.Background(), "repo")
+	if err != nil || len(wfs) != 2 || wfs[1].ID != 2 {
+		t.Fatalf("workflows = %+v, %v", wfs, err)
+	}
+}

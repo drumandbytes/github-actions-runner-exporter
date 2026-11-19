@@ -106,34 +106,49 @@ func (c *Client) getPage(ctx context.Context, url string, out interface{}) (next
 	return "", nil
 }
 
-// Runners returns the org's self-hosted runners. No pagination; add it past 100.
+// Runners returns the org's self-hosted runners, following pagination.
 func (c *Client) Runners(ctx context.Context) ([]Runner, error) {
-	var out listRunnersResponse
-	url := fmt.Sprintf("%s/orgs/%s/actions/runners?per_page=100", c.baseURL, c.org)
-	if err := c.get(ctx, url, &out); err != nil {
-		return nil, err
+	next := fmt.Sprintf("%s/orgs/%s/actions/runners?per_page=100", c.baseURL, c.org)
+	var runners []Runner
+	for next != "" {
+		var out listRunnersResponse
+		var err error
+		if next, err = c.getPage(ctx, next, &out); err != nil {
+			return nil, err
+		}
+		runners = append(runners, out.Runners...)
 	}
-	return out.Runners, nil
+	return runners, nil
 }
 
-// Repos returns the org's repos, forks included (see Repo.Fork). No pagination; add it past 100.
+// Repos returns the org's repos, forks included (see Repo.Fork), following pagination.
 func (c *Client) Repos(ctx context.Context) ([]Repo, error) {
-	var out []Repo
-	url := fmt.Sprintf("%s/orgs/%s/repos?per_page=100&type=all", c.baseURL, c.org)
-	if err := c.get(ctx, url, &out); err != nil {
-		return nil, err
+	next := fmt.Sprintf("%s/orgs/%s/repos?per_page=100&type=all", c.baseURL, c.org)
+	var repos []Repo
+	for next != "" {
+		var out []Repo
+		var err error
+		if next, err = c.getPage(ctx, next, &out); err != nil {
+			return nil, err
+		}
+		repos = append(repos, out...)
 	}
-	return out, nil
+	return repos, nil
 }
 
-// Workflows returns a repo's workflow definitions. No pagination; add it past 100.
+// Workflows returns a repo's workflow definitions, following pagination.
 func (c *Client) Workflows(ctx context.Context, repo string) ([]Workflow, error) {
-	var out listWorkflowsResponse
-	url := fmt.Sprintf("%s/repos/%s/%s/actions/workflows?per_page=100", c.baseURL, c.org, repo)
-	if err := c.get(ctx, url, &out); err != nil {
-		return nil, err
+	next := fmt.Sprintf("%s/repos/%s/%s/actions/workflows?per_page=100", c.baseURL, c.org, repo)
+	var workflows []Workflow
+	for next != "" {
+		var out listWorkflowsResponse
+		var err error
+		if next, err = c.getPage(ctx, next, &out); err != nil {
+			return nil, err
+		}
+		workflows = append(workflows, out.Workflows...)
 	}
-	return out.Workflows, nil
+	return workflows, nil
 }
 
 // LatestRunForWorkflow returns one workflow's most recent run, ok=false if it
