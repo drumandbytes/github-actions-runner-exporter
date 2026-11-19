@@ -83,3 +83,7 @@ multi-arch images to GHCR with SLSA provenance attestation on push to
   permissions section to exercise end-to-end; there's no mock/fixture
   server in this repo, so manual testing against `/metrics` needs
   `GITHUB_ORG`/`GITHUB_TOKEN` pointed at an actual org.
+
+## Conditional requests
+
+`Client.request` keeps each GET URL's last 200 (body, `ETag`, `Link`; bodies over 2 MiB and beyond 4096 URLs are not kept) and sends `If-None-Match` next time. GitHub answers 304 without counting it against the rate limit, and the cached 200 is handed back to the caller, so slow-changing reads (repo list, workflows, alerts, PR counts) are nearly free once seen, and the same URL asked by two collectors (the org stats and the adoption stats both read PR counts) is free the second time. `github_api_requests_total{result}` shows fresh vs not_modified.

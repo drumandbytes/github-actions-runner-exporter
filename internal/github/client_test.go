@@ -3,9 +3,11 @@ package github
 import (
 	"context"
 	"fmt"
+	"io"
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -173,5 +175,82 @@ func TestWorkflowsPaginates(t *testing.T) {
 	wfs, err := c.Workflows(context.Background(), "repo")
 	if err != nil || len(wfs) != 2 || wfs[1].ID != 2 {
 		t.Fatalf("workflows = %+v, %v", wfs, err)
+	}
+}
+
+// etagServer answers 200 with an ETag and a Link header, then 304 to a matching If-None-Match.
+func etagServer(hits *[]string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*hits = append(*hits, r.Header.Get("If-None-Match"))
+		w.Header().Set("X-RateLimit-Limit", "5000")
+		w.Header().Set("X-RateLimit-Remaining", "4999")
+		w.Header().Set("X-RateLimit-Reset", "9999999999")
+		if r.Header.Get("If-None-Match") == `"v1"` {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+		w.Header().Set("ETag", `"v1"`)
+		w.Header().Set("Link", fmt.Sprintf(`<http://%s%s?page=2>; rel="last"`, r.Host, r.URL.Path))
+		_, _ = w.Write([]byte(`[{"name":"a"},{"name":"b"}]`))
+	}))
+}
+
+func TestRepeatedRequestsAreConditionalAndAnswerFromTheCacheOn304(t *testing.T) {
+	var hits []string
+	srv := etagServer(&hits)
+	defer srv.Close()
+	c := NewClient("org", "token", time.Second)
+	c.baseURL = srv.URL
+
+	for i := 0; i < 3; i++ {
+		repos, err := c.Repos(context.Background())
+		if err != nil || len(repos) != 2 || repos[1].Name != "b" {
+			t.Fatalf("call %d: repos = %+v, %v", i, repos, err)
+		}
+	}
+	// the Link header (here "last", read by OpenPRCount) survives a 304 too
+	n, err := c.OpenPRCount(context.Background(), "repo")
+	if err != nil || n != 2 {
+		t.Fatalf("OpenPRCount = %d, %v", n, err)
+	}
+	n, err = c.OpenPRCount(context.Background(), "repo")
+	if err != nil || n != 2 {
+		t.Fatalf("OpenPRCount (304) = %d, %v", n, err)
+	}
+	// first request of each URL is unconditional, every later one carries the ETag
+	want := []string{"", `"v1"`, `"v1"`, "", `"v1"`}
+	if len(hits) != len(want) {
+		t.Fatalf("If-None-Match sent = %q, want %q", hits, want)
+	}
+	for i := range want {
+		if hits[i] != want[i] {
+			t.Fatalf("request %d If-None-Match = %q, want %q (all: %q)", i, hits[i], want[i], hits)
+		}
+	}
+	if got := c.RateLimits(); len(got) != 1 {
+		t.Fatalf("a 304 must still record the rate-limit headers: %+v", got)
+	}
+	if fresh, notModified := c.RequestCounts(); fresh != 2 || notModified != 3 {
+		t.Fatalf("counts = %d fresh, %d not modified; want 2 and 3", fresh, notModified)
+	}
+}
+
+func TestOversizedBodiesAreNotCachedButStillRead(t *testing.T) {
+	big := strings.Repeat("x", maxCachedBody+10)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("ETag", `"big"`)
+		_, _ = w.Write([]byte(`["` + big + `"]`))
+	}))
+	defer srv.Close()
+	c := NewClient("org", "token", time.Second)
+	c.baseURL = srv.URL
+	resp, err := c.request(context.Background(), srv.URL+"/x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if len(body) != maxCachedBody+14 || len(c.cache) != 0 {
+		t.Fatalf("read %d bytes, cached %d entries", len(body), len(c.cache))
 	}
 }
