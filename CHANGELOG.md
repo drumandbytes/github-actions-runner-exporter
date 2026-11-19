@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.8.1...v1.9.0) (2026-11-19)
+
+
+### Features
+
+* **github:** conditional requests so unchanged reads cost no rate limit ([#59](https://github.com/drumandbytes/github-actions-runner-exporter/issues/59)) ([3d137e4](https://github.com/drumandbytes/github-actions-runner-exporter/commit/3d137e4a84be7e8a308a62918b57a7983c9649c6))
+
 ## [1.8.1](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.8.0...v1.8.1) (2026-11-19)
 
 
