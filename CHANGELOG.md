@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.8.0...v1.8.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **github:** follow pagination for repos, runners and workflows ([#57](https://github.com/drumandbytes/github-actions-runner-exporter/issues/57)) ([1008c45](https://github.com/drumandbytes/github-actions-runner-exporter/commit/1008c45e3149651d3d66a2f4882963ef4f6c9552))
+
 ## [1.8.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.7.2...v1.8.0) (2026-11-19)
 
 
