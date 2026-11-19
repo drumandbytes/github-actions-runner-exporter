@@ -5,6 +5,8 @@ package adoption
 
 import (
 	"context"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/drumandbytes/github-actions-runner-exporter/internal/github"
@@ -50,6 +52,7 @@ type Summary struct {
 
 // Client is the subset of *github.Client this package calls; tests fake it.
 type Client interface {
+	Repos(ctx context.Context) ([]github.Repo, error)
 	RepoInfo(ctx context.Context, repo string) (github.RepoInfo, error)
 	OpenPRCount(ctx context.Context, repo string) (int, error)
 	Releases(ctx context.Context, repo string) ([]github.Release, error)
@@ -59,10 +62,51 @@ type Client interface {
 	TrafficPaths(ctx context.Context, repo string) ([]github.PopularPath, error)
 }
 
+// AllPublic, as an entry in the repo list, stands for every public, non-archived, non-fork repo of
+// the org, looked up on each poll so new repos appear without a config change.
+const AllPublic = "public"
+
+// resolve expands AllPublic and drops duplicates; other entries are repo names.
+func resolve(ctx context.Context, client Client, repos []string) ([]string, error) {
+	seen := map[string]bool{}
+	var out []string
+	add := func(name string) {
+		if !seen[name] {
+			seen[name] = true
+			out = append(out, name)
+		}
+	}
+	for _, name := range repos {
+		if !strings.EqualFold(name, AllPublic) {
+			add(name)
+			continue
+		}
+		all, err := client.Repos(ctx)
+		if err != nil {
+			return nil, err
+		}
+		var public []string
+		for _, r := range all {
+			if !r.Private && !r.Archived && !r.Fork {
+				public = append(public, r.Name)
+			}
+		}
+		sort.Strings(public)
+		for _, n := range public {
+			add(n)
+		}
+	}
+	return out, nil
+}
+
 // Build fails only when a repo's basic info or releases can't be read; a
 // missing traffic permission just leaves TrafficOK false.
 func Build(ctx context.Context, client Client, repos []string) (Summary, error) {
 	s := Summary{GeneratedAt: time.Now()}
+	repos, err := resolve(ctx, client, repos)
+	if err != nil {
+		return Summary{}, err
+	}
 	for _, name := range repos {
 		info, err := client.RepoInfo(ctx, name)
 		if err != nil {

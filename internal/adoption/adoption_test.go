@@ -3,13 +3,19 @@ package adoption
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/drumandbytes/github-actions-runner-exporter/internal/github"
 )
 
-type fake struct{ trafficErr error }
+type fake struct {
+	trafficErr error
+	repos      []github.Repo
+}
+
+func (f fake) Repos(context.Context) ([]github.Repo, error) { return f.repos, nil }
 
 func (fake) RepoInfo(context.Context, string) (github.RepoInfo, error) {
 	return github.RepoInfo{Stars: 5, Forks: 1, Watchers: 2, OpenIssuesAndPRs: 4}, nil
@@ -54,5 +60,35 @@ func TestBuildTrafficForbidden(t *testing.T) {
 	}
 	if s.Repos[0].TrafficOK || s.Repos[0].Stars != 5 {
 		t.Fatalf("%+v", s.Repos[0])
+	}
+}
+
+func TestAllPublicExpandsToPublicNonArchivedNonForkRepos(t *testing.T) {
+	f := fake{repos: []github.Repo{
+		{Name: "zeta"},
+		{Name: "alpha"},
+		{Name: "secret", Private: true},
+		{Name: "old", Archived: true},
+		{Name: "someone-elses", Fork: true},
+	}}
+	got, err := resolve(context.Background(), f, []string{"public"})
+	if err != nil || !reflect.DeepEqual(got, []string{"alpha", "zeta"}) {
+		t.Fatalf("got %v, %v", got, err)
+	}
+}
+
+func TestAllPublicMixesWithNamesWithoutDuplicates(t *testing.T) {
+	f := fake{repos: []github.Repo{{Name: "alpha"}, {Name: "delistd"}}}
+	got, err := resolve(context.Background(), f, []string{"delistd", "PUBLIC"})
+	if err != nil || !reflect.DeepEqual(got, []string{"delistd", "alpha"}) {
+		t.Fatalf("got %v, %v", got, err)
+	}
+}
+
+func TestBuildWithAllPublicCoversEachRepo(t *testing.T) {
+	f := fake{repos: []github.Repo{{Name: "a"}, {Name: "b"}}}
+	s, err := Build(context.Background(), f, []string{"public"})
+	if err != nil || len(s.Repos) != 2 || s.Repos[1].Name != "b" {
+		t.Fatalf("%+v, %v", s.Repos, err)
 	}
 }

@@ -106,7 +106,8 @@ sum by (conclusion) (increase(github_workflow_runs_total[1d]))
 ## Adoption stats
 
 Optional, off unless `ADOPTION_REPOS` is set (comma-separated repo names in
-`GITHUB_ORG`). Polled on its own `ADOPTION_CACHE_TTL` (default 1h), since
+`GITHUB_ORG`; the entry `public` stands for every public, non-archived, non-fork repo of the org,
+looked up on each poll so new repos appear on their own, and mixes with names, e.g. `public,some-private-repo`). Polled on its own `ADOPTION_CACHE_TTL` (default 1h), since
 none of it moves fast. Everything is public GitHub data or your own repo
 traffic; nothing is collected from the tracked project's users.
 
@@ -147,7 +148,7 @@ window it sees and alerts on the lowest.
 | `RUNNER_CACHE_MAX_STALE` | `5m` | |
 | `ORG_CACHE_TTL` | `5m` | |
 | `ORG_CACHE_MAX_STALE` | `30m` | |
-| `ADOPTION_REPOS` | | no; enables [adoption stats](#adoption-stats) |
+| `ADOPTION_REPOS` | | no; enables [adoption stats](#adoption-stats). Repo names, and/or `public` for all public repos |
 | `ADOPTION_CACHE_TTL` | `1h` | |
 | `ADOPTION_CACHE_MAX_STALE` | `3h` | |
 

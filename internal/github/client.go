@@ -116,7 +116,7 @@ func (c *Client) Runners(ctx context.Context) ([]Runner, error) {
 	return out.Runners, nil
 }
 
-// Repos returns the org's non-fork repos. No pagination; add it past 100.
+// Repos returns the org's repos, forks included (see Repo.Fork). No pagination; add it past 100.
 func (c *Client) Repos(ctx context.Context) ([]Repo, error) {
 	var out []Repo
 	url := fmt.Sprintf("%s/orgs/%s/repos?per_page=100&type=all", c.baseURL, c.org)
