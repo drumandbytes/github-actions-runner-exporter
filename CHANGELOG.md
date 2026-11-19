@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.7.2...v1.8.0) (2026-11-19)
+
+
+### Features
+
+* **adoption:** ADOPTION_REPOS=public covers every public, non-archived, non-fork repo ([#55](https://github.com/drumandbytes/github-actions-runner-exporter/issues/55)) ([7639c32](https://github.com/drumandbytes/github-actions-runner-exporter/commit/7639c3217575998f22a3d4f7160cd051378e17a1))
+
 ## [1.7.2](https://github.com/drumandbytes/github-actions-runner-exporter/compare/v1.7.1...v1.7.2) (2026-11-16)
 
 
