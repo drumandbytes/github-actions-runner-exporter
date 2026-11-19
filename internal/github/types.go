@@ -27,6 +27,7 @@ type Repo struct {
 	Name     string `json:"name"`
 	Private  bool   `json:"private"`
 	Archived bool   `json:"archived"`
+	Fork     bool   `json:"fork"`
 }
 
 // Workflow is a repo's workflow definition (not a run of it).
