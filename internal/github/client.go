@@ -2,14 +2,17 @@
 package github
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -26,7 +29,31 @@ type Client struct {
 	// core budgets by reset time: GitHub counts per region, so one token has
 	// more than one window at once, depending on which region serves an endpoint
 	budgets map[int64]RateLimit
+
+	// each URL's last 200 response, so the next request can be conditional (see request)
+	cache map[string]cachedResponse
+
+	fresh, notModified atomic.Int64 // requests that cost rate limit vs answered 304
 }
+
+// RequestCounts is how many requests came back as a full 200 (counted against the rate limit) and
+// how many as a 304 answered from the cache (not counted).
+func (c *Client) RequestCounts() (fresh, notModified int64) {
+	return c.fresh.Load(), c.notModified.Load()
+}
+
+// cachedResponse is what a conditional request needs to answer 304 locally.
+type cachedResponse struct {
+	etag string
+	link string
+	body []byte
+}
+
+const (
+	// a page this large is passed through uncached rather than held in memory
+	maxCachedBody    = 2 << 20
+	maxCachedEntries = 4096
+)
 
 func NewClient(org, token string, timeout time.Duration) *Client {
 	return &Client{
@@ -38,6 +65,10 @@ func NewClient(org, token string, timeout time.Duration) *Client {
 	}
 }
 
+// request is a GET with conditional caching: GitHub does not count a 304 against the rate limit, so
+// the slow-changing lists (repos, workflows, alerts, PR counts) cost almost nothing once seen. The
+// same URL asked twice by two collectors is also free the second time. A 304 comes back to callers
+// as the cached 200, Link header included, so nothing above this function knows the difference.
 func (c *Client) request(ctx context.Context, url string) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -47,11 +78,58 @@ func (c *Client) request(ctx context.Context, url string) (*http.Response, error
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
+	c.mu.Lock()
+	cached, have := c.cache[url]
+	c.mu.Unlock()
+	if have {
+		req.Header.Set("If-None-Match", cached.etag)
+	}
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("requesting %s: %w", url, err)
 	}
 	c.recordRateLimit(resp.Header)
+	if resp.StatusCode == http.StatusNotModified {
+		c.notModified.Add(1)
+	} else {
+		c.fresh.Add(1)
+	}
+
+	switch {
+	case resp.StatusCode == http.StatusNotModified && have:
+		_ = resp.Body.Close()
+		resp.StatusCode, resp.Status = http.StatusOK, "200 OK"
+		resp.Body = io.NopCloser(bytes.NewReader(cached.body))
+		resp.Header.Set("Link", cached.link)
+	case resp.StatusCode == http.StatusOK && resp.Header.Get("ETag") != "":
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxCachedBody+1))
+		if err != nil {
+			_ = resp.Body.Close()
+			return nil, fmt.Errorf("reading %s: %w", url, err)
+		}
+		if len(body) > maxCachedBody {
+			resp.Body = struct {
+				io.Reader
+				io.Closer
+			}{io.MultiReader(bytes.NewReader(body), resp.Body), resp.Body}
+			break
+		}
+		_ = resp.Body.Close()
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+		c.mu.Lock()
+		if c.cache == nil {
+			c.cache = map[string]cachedResponse{}
+		}
+		if _, known := c.cache[url]; !known && len(c.cache) >= maxCachedEntries {
+			for k := range c.cache { // full: drop one, any one
+				delete(c.cache, k)
+				break
+			}
+		}
+		c.cache[url] = cachedResponse{etag: resp.Header.Get("ETag"), link: resp.Header.Get("Link"), body: body}
+		c.mu.Unlock()
+	}
 	return resp, nil
 }
 

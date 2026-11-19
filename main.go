@@ -42,6 +42,7 @@ func main() {
 	}, cfg.OrgCacheTTL, cfg.OrgCacheMaxStale, log)
 
 	registry := prometheus.NewRegistry()
+	registry.MustRegister(collector.NewAPIRequests(client.RequestCounts))
 	registry.MustRegister(collector.New(cfg.GitHubOrg, runnerFetcher, orgFetcher, client.RateLimits, cfg.RunnerCacheTTL, cfg.OrgCacheTTL), feed)
 
 	if len(cfg.AdoptionRepos) > 0 {
